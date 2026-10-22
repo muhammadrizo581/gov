@@ -1,0 +1,1572 @@
+<!DOCTYPE html>
+<html lang="uz" class="dark">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#0e1013" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>my.gov.uz — Raqamli Hujjatlar</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            appDark: '#0E1013',
+            appCardBg: '#181B20',
+            appBorder: '#24272E',
+            uzbekBlue: '#92BCF4',
+            uzbekGreen: '#22C55E',
+            tabBorder: '#3CD5C9',
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"SF Pro Display"', '"SF Pro Text"', 'Inter', 'Roboto', 'Helvetica Neue', 'Arial', 'sans-serif'],
+            mono: ['"SF Mono"', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Reset & App Aesthetics */
+    ::-webkit-scrollbar { display: none; }
+    * {
+      -webkit-tap-highlight-color: transparent;
+      box-sizing: border-box;
+      scrollbar-width: none;
+    }
+    body {
+      background-color: #050607;
+      color: #ffffff;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", Inter, sans-serif;
+    }
+
+    /* Screen Transitions */
+    .app-screen {
+      display: none;
+      opacity: 0;
+      transform: translateX(100%);
+      transition: transform 0.28s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.25s ease;
+      min-height: 100%;
+      width: 100%;
+    }
+    .app-screen.active {
+      display: flex;
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .app-screen.exit-left {
+      transform: translateX(-30%);
+      opacity: 0.8;
+    }
+
+    /* 3D Flip Card Styles */
+    .perspective-1000 {
+      perspective: 1200px;
+    }
+    .transform-style-3d {
+      transform-style: preserve-3d;
+    }
+    .backface-hidden {
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    .rotate-y-180 {
+      transform: rotateY(180deg);
+    }
+
+    /* ID Card Guilloche Patterns */
+    .id-guilloche-bg {
+      background-color: #f7fcfe;
+      background-image: 
+        radial-gradient(circle at 70% 30%, rgba(186, 230, 253, 0.45) 0%, transparent 60%),
+        radial-gradient(circle at 30% 70%, rgba(209, 250, 229, 0.4) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(254, 240, 138, 0.25) 0%, transparent 40%),
+        repeating-linear-gradient(45deg, rgba(14, 165, 233, 0.04) 0px, rgba(14, 165, 233, 0.04) 1px, transparent 1px, transparent 6px),
+        repeating-linear-gradient(-45deg, rgba(16, 185, 129, 0.03) 0px, rgba(16, 185, 129, 0.03) 1px, transparent 1px, transparent 6px);
+    }
+
+    /* Animated QR Scanner line */
+    @keyframes scan-anim {
+      0% { top: 10%; opacity: 0.8; }
+      50% { top: 90%; opacity: 1; }
+      100% { top: 10%; opacity: 0.8; }
+    }
+    .scanner-line {
+      animation: scan-anim 2.2s ease-in-out infinite;
+    }
+
+    /* Pulse wave */
+    @keyframes ripple {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 0.4; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .pulse-glow {
+      animation: ripple 2s infinite ease-in-out;
+    }
+
+    /* Bottom Sheet slide up */
+    .sheet-backdrop {
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .sheet-enter {
+      animation: sheetSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes sheetSlideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+
+    /* Toast Notification */
+    #app-toast {
+      transform: translate(-50%, -100px);
+      transition: transform 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+    }
+    #app-toast.show {
+      transform: translate(-50%, 0);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#07080a] flex flex-col items-center justify-start p-0 md:py-6 selection:bg-teal-500 selection:text-white">
+
+  <!-- Desktop Simulator Bar (visible only on desktop screen >= 768px) -->
+  <header class="hidden md:flex items-center justify-between w-full max-w-[430px] mb-3 px-3 text-xs text-neutral-400 select-none">
+    <div class="flex items-center space-x-2">
+      <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+      <span class="font-medium text-white tracking-wide">my.gov.uz Clone</span>
+      <span class="text-[10px] bg-neutral-800 text-neutral-300 px-1.5 py-0.5 rounded">v2.4</span>
+    </div>
+    <div class="flex items-center space-x-2">
+      <!-- Quick Screen Jumpers -->
+      <button onclick="navigateTo('screen-profile')" class="hover:text-white hover:bg-neutral-800 px-2 py-1 rounded transition">Profil</button>
+      <button onclick="navigateTo('screen-docs')" class="hover:text-white hover:bg-neutral-800 px-2 py-1 rounded transition">Hujjatlar</button>
+      <button onclick="navigateTo('screen-id-card')" class="hover:text-white hover:bg-neutral-800 px-2 py-1 rounded transition">ID karta</button>
+      <!-- Frame Toggle -->
+      <button id="toggle-frame-btn" onclick="toggleDeviceFrame()" class="text-sky-400 hover:text-sky-300 hover:bg-neutral-800 px-2 py-1 rounded transition flex items-center gap-1">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+        <span>Ramka</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile Phone Outer Wrapper -->
+  <div id="device-wrapper" class="relative w-full max-w-[420px] min-h-screen md:min-h-[880px] md:max-h-[900px] bg-[#0E1013] md:rounded-[50px] shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden md:border-[7px] md:border-[#22252B]">
+
+    <!-- ==================== iOS STATUS BAR ==================== -->
+    <header class="w-full pt-3 px-7 flex justify-between items-center z-40 text-white select-none shrink-0" data-purpose="ios-status-bar">
+      <!-- Left side: Time & Audio indicator -->
+      <div class="flex items-center space-x-1.5 w-24">
+        <span id="status-clock" class="text-[15px] font-semibold tracking-tight">22:04</span>
+        <svg class="w-3.5 h-3.5 fill-current opacity-75" viewBox="0 0 24 24">
+          <path d="M5.7 4.29l1.41-1.41L21.1 16.89l-1.41 1.41L15.35 14H18c.55 0 1-.45 1-1v-2c0-.55-.45-1-1-1v-2c0-3.07-1.63-5.64-4.5-6.32V1c0-.55-.45-1-1-1s-1 .45-1 1v.68c-.9.21-1.72.6-2.43 1.13L5.7 4.29zM12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm-6.5-6.5L4 14v-4c0-3.07 1.63-5.64 4.5-6.32V3.5"></path>
+        </svg>
+      </div>
+
+      <!-- Center: Dynamic Island -->
+      <div class="h-[28px] w-[124px] bg-black rounded-full flex items-center px-2.5 justify-start gap-1.5 shadow-inner cursor-pointer hover:scale-[1.02] transition" onclick="triggerDynamicIsland()">
+        <div class="w-4 h-4 rounded-full flex items-center justify-center text-[#30D158]">
+          <svg class="w-3.5 h-3.5 stroke-current fill-none" stroke-width="2.5" viewBox="0 0 24 24">
+            <path d="M12 21a9 9 0 0 0 9-9c0-4.97-4.03-9-9-9s-9 4.03-9 9c0 2.12.74 4.07 1.97 5.61L4 21l3.5-.95A8.96 8.96 0 0 0 12 21z" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </div>
+        <div class="w-1.5 h-1.5 rounded-full bg-[#30D158] animate-ping ml-auto"></div>
+      </div>
+
+      <!-- Right side: Cellular, LTE, Battery -->
+      <div class="flex items-center justify-end space-x-1.5 w-24">
+        <!-- Cellular bars -->
+        <div class="flex items-end space-x-[2px] h-3 mr-0.5">
+          <span class="w-[3px] h-1.5 bg-white rounded-xs"></span>
+          <span class="w-[3px] h-2 bg-white rounded-xs"></span>
+          <span class="w-[3px] h-2.5 bg-white rounded-xs"></span>
+          <span class="w-[3px] h-3 bg-white rounded-xs"></span>
+        </div>
+        <span class="text-[12px] font-semibold tracking-tighter">LTE</span>
+        <!-- Battery badge -->
+        <div class="flex items-center">
+          <div class="border border-white/80 rounded-[4px] px-[2px] py-[0.5px] flex items-center justify-center h-[12px] min-w-[24px] relative">
+            <div id="battery-fill" class="bg-white/90 absolute left-[1px] top-[1px] bottom-[1px] rounded-[2px]" style="width: 19%;"></div>
+            <span class="text-[8.5px] font-extrabold text-white relative z-10 leading-none">19</span>
+          </div>
+          <div class="w-[1.5px] h-[4px] bg-white/70 rounded-r-xs ml-[0.5px]"></div>
+        </div>
+      </div>
+    </header>
+
+
+    <!-- ======================================================== -->
+    <!-- SCREEN 1: PROFILIM (MAIN DASHBOARD) -->
+    <!-- ======================================================== -->
+    <section id="screen-profile" class="app-screen active flex-col flex-1 overflow-y-auto pb-28">
+      
+      <!-- User Profile Header -->
+      <div class="mt-4 px-5 flex items-center justify-between" data-purpose="user-header">
+        <div class="flex items-center space-x-3.5">
+          <!-- Avatar with white circular frame -->
+          <div class="w-12 h-12 rounded-full overflow-hidden border-2 border-white/90 shrink-0 bg-neutral-800 shadow-md">
+            <img src="assets/avatar.png" alt="A. Muhammadrizo avatar" class="w-full h-full object-cover" onerror="this.src='stitch_mygov_mobile_app_clone/avatar.png'"/>
+          </div>
+          <!-- User Info -->
+          <div class="flex flex-col">
+            <h1 class="text-white font-semibold text-[17px] leading-tight tracking-tight">A. Muhammadrizo</h1>
+            <span id="profile-phone" class="text-[#888c94] text-[13px] font-normal tracking-wide mt-0.5">+998 (77) 177-04-00</span>
+          </div>
+        </div>
+        <!-- Action Icons (Show/Hide Privacy & Settings) -->
+        <div class="flex items-center space-x-4 text-white/90">
+          <button onclick="togglePrivacyMode()" aria-label="Toggle visible state" class="hover:opacity-75 active:scale-90 transition p-1" type="button">
+            <svg id="eye-icon-open" class="w-6 h-6 stroke-current fill-none" stroke-width="1.9" viewBox="0 0 24 24">
+              <path d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" stroke-linecap="round" stroke-linejoin="round"></path>
+              <circle cx="12" cy="12" r="3" stroke-width="1.9"></circle>
+            </svg>
+            <svg id="eye-icon-closed" class="w-6 h-6 stroke-current fill-none hidden" stroke-width="1.9" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88" />
+            </svg>
+          </button>
+          <button onclick="openSettingsModal()" aria-label="Settings" class="hover:opacity-75 active:scale-90 transition p-1" type="button">
+            <svg class="w-6 h-6 stroke-current fill-none" stroke-width="1.8" viewBox="0 0 24 24">
+              <path d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 010 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.6 6.6 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 010-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28z" stroke-linecap="round" stroke-linejoin="round"></path>
+              <circle cx="12" cy="12" r="3" stroke-width="1.8"></circle>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- ID Card Hero Container (Clickable -> Opens ID Card Screen) -->
+      <div class="mt-4 px-4 cursor-pointer group" onclick="navigateTo('screen-id-card')" data-purpose="citizen-id-card-container">
+        <div class="relative w-full rounded-[24px] bg-gradient-to-b from-[#242c38] to-[#14171d] p-[1.5px] shadow-2xl transition-all duration-300 group-hover:scale-[1.01] active:scale-[0.99]">
+          
+          <!-- Exact Authentic ID Card Image Crop -->
+          <div class="relative w-full rounded-[22px] overflow-hidden shadow-inner bg-neutral-900 border border-blue-200/30">
+            <img src="assets/id_card_front.png" alt="ID Karta Abdulxakimov Muhammadrizo" class="w-full h-auto block select-none" onerror="this.src='stitch_mygov_mobile_app_clone/id_card_front.png'"/>
+            
+            <!-- Shimmer / Glass reflection overlay -->
+            <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent pointer-events-none"></div>
+
+            <!-- Subtle tap indicator -->
+            <div class="absolute bottom-2 right-3 bg-black/40 backdrop-blur-md px-2 py-0.5 rounded-full text-[10px] text-white/80 font-medium flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span>Batafsil</span>
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Pill Button: "Raqamli hujjatlar va ma'lumotlar" -->
+        <button onclick="event.stopPropagation(); navigateTo('screen-docs')" class="w-full mt-3 h-[52px] bg-[#a9cff8] hover:bg-[#b8d8fb] active:bg-[#97c1ee] rounded-[26px] px-4 flex items-center justify-between text-neutral-900 transition-all shadow-md active:scale-[0.99]">
+          <div class="flex items-center space-x-2.5">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-neutral-900">
+              <svg class="w-6 h-6 stroke-current fill-none" stroke-width="2" viewBox="0 0 24 24">
+                <path d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5zm6-10.125a1.875 1.875 0 11-3.75 0 1.875 1.875 0 013.75 0zm1.294 6.336a6.721 6.721 0 01-3.17.789 6.721 6.721 0 01-3.168-.789 3.376 3.376 0 016.338 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+            <span class="text-[15px] font-semibold text-neutral-900 tracking-tight">Raqamli hujjatlar va ma'lumotlar</span>
+          </div>
+          <div class="bg-[#26a86c] text-white text-[12px] font-bold px-3 py-1 rounded-full shadow-xs">
+            Yangi
+          </div>
+        </button>
+      </div>
+
+      <!-- Services & Sections Menu List -->
+      <main class="mt-4 px-2 space-y-1 grow" data-purpose="services-menu-list">
+        
+        <!-- 1. Arizalarim va sharhlarim -->
+        <div onclick="openMenuSheet('Arizalarim va sharhlarim', 'applications')" class="flex items-center justify-between px-3.5 py-3 hover:bg-white/[0.04] active:bg-white/[0.08] rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-4">
+            <div class="text-white w-6 h-6 flex items-center justify-center shrink-0">
+              <svg class="w-6 h-6 stroke-current fill-none" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-white font-medium text-[15px] leading-snug">Arizalarim va sharhlarim</h3>
+              <p class="text-[#80848d] text-[13px] font-normal leading-tight mt-0.5">Tarixi, holati va kuzatish</p>
+            </div>
+          </div>
+          <div class="text-neutral-500 pr-1">
+            <svg class="w-4 h-4 stroke-current fill-none" stroke-width="2.5" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </div>
+
+        <!-- 2. Mening salomatligim -->
+        <div onclick="openMenuSheet('Mening salomatligim', 'health')" class="flex items-center justify-between px-3.5 py-3 hover:bg-white/[0.04] active:bg-white/[0.08] rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-4">
+            <div class="text-white w-6 h-6 flex items-center justify-center shrink-0">
+              <svg class="w-6 h-6 stroke-current fill-none" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+            <div class="max-w-[210px]">
+              <h3 class="text-white font-medium text-[15px] leading-snug truncate">Mening salomatligim</h3>
+              <p class="text-[#80848d] text-[13px] font-normal leading-tight truncate mt-0.5">Salomatligimga tegishli ma'lumotnomalar, ...</p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="bg-[#198754] text-white text-[12px] font-bold px-3 py-1 rounded-full shadow-xs">Yangi</span>
+            <div class="text-neutral-500 pr-1">
+              <svg class="w-4 h-4 stroke-current fill-none" stroke-width="2.5" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. Mening oilam -->
+        <div onclick="openMenuSheet('Mening oilam', 'family')" class="flex items-center justify-between px-3.5 py-3 hover:bg-white/[0.04] active:bg-white/[0.08] rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-4">
+            <div class="text-white w-6 h-6 flex items-center justify-center shrink-0">
+              <svg class="w-6 h-6 stroke-current fill-none" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-white font-medium text-[15px] leading-snug">Mening oilam</h3>
+              <p class="text-[#80848d] text-[13px] font-normal leading-tight mt-0.5">Oila tarkibi</p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <span class="bg-[#198754] text-white text-[12px] font-bold px-3 py-1 rounded-full shadow-xs">Yangi</span>
+            <div class="text-neutral-500 pr-1">
+              <svg class="w-4 h-4 stroke-current fill-none" stroke-width="2.5" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. Mening uyim -->
+        <div onclick="openMenuSheet('Mening uyim', 'house')" class="flex items-center justify-between px-3.5 py-3 hover:bg-white/[0.04] active:bg-white/[0.08] rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-4">
+            <div class="text-white w-6 h-6 flex items-center justify-center shrink-0">
+              <svg class="w-6 h-6 stroke-current fill-none" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-white font-medium text-[15px] leading-snug">Mening uyim</h3>
+              <p class="text-[#80848d] text-[13px] font-normal leading-tight mt-0.5">Mulk va kadastr</p>
+            </div>
+          </div>
+          <div class="text-neutral-500 pr-1">
+            <svg class="w-4 h-4 stroke-current fill-none" stroke-width="2.5" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </div>
+
+        <!-- 5. Mehnat faoliyati -->
+        <div onclick="openMenuSheet('Mehnat faoliyati', 'work')" class="flex items-center justify-between px-3.5 py-3 hover:bg-white/[0.04] active:bg-white/[0.08] rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-4">
+            <div class="text-white w-6 h-6 flex items-center justify-center shrink-0">
+              <svg class="w-6 h-6 stroke-current fill-none" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v1.319m7.5 0a48.667 48.667 0 00-7.5 0" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-white font-medium text-[15px] leading-snug">Mehnat faoliyati</h3>
+              <p class="text-[#80848d] text-[13px] font-normal leading-tight mt-0.5">Mehnat tarixi</p>
+            </div>
+          </div>
+          <div class="text-neutral-500 pr-1">
+            <svg class="w-4 h-4 stroke-current fill-none" stroke-width="2.5" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </div>
+
+        <!-- 6. Mening avtotransportim -->
+        <div onclick="openMenuSheet('Mening avtotransportim', 'transport')" class="flex items-center justify-between px-3.5 py-3 hover:bg-white/[0.04] active:bg-white/[0.08] rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-4">
+            <div class="text-white w-6 h-6 flex items-center justify-center shrink-0">
+              <svg class="w-6 h-6 stroke-current fill-none" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M8.25 18.75a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h6m-9 0H3.375a1.125 1.125 0 01-1.125-1.125V14.25m17.25 4.5a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m3 0h1.125c.621 0 1.129-.504 1.09-1.124a17.902 17.902 0 00-3.213-9.193 2.056 2.056 0 00-1.58-.86H14.25M16.5 18.75h-2.25m0-11.25H9.75M9.75 7.5H4.872a2.056 2.056 0 00-1.92 1.341L1.5 13.5v3" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-white font-medium text-[15px] leading-snug">Mening avtotransportim</h3>
+              <p class="text-[#80848d] text-[13px] font-normal leading-tight mt-0.5">Avtotransport vositalari</p>
+            </div>
+          </div>
+          <div class="text-neutral-500 pr-1">
+            <svg class="w-4 h-4 stroke-current fill-none" stroke-width="2.5" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </div>
+
+        <!-- 7. Soliqlar, ta'qiq va jarimalar -->
+        <div onclick="openMenuSheet('Soliqlar, ta\'qiq va jarimalar', 'taxes')" class="flex items-center justify-between px-3.5 py-3 hover:bg-white/[0.04] active:bg-white/[0.08] rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-4">
+            <div class="text-white w-6 h-6 flex items-center justify-center shrink-0">
+              <svg class="w-6 h-6 stroke-current fill-none" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-white font-medium text-[15px] leading-snug">Soliqlar, ta'qiq va jarimalar</h3>
+              <p class="text-[#80848d] text-[13px] font-normal leading-tight mt-0.5">Ijro hujjati, soliq va jarimalar</p>
+            </div>
+          </div>
+          <div class="text-neutral-500 pr-1">
+            <svg class="w-4 h-4 stroke-current fill-none" stroke-width="2.5" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </div>
+
+      </main>
+    </section>
+
+
+    <!-- ======================================================== -->
+    <!-- SCREEN 2: RAQAMLI HUJJATLAR VA MA'LUMOTLAR -->
+    <!-- ======================================================== -->
+    <section id="screen-docs" class="app-screen flex-col flex-1 overflow-y-auto pb-24">
+      
+      <!-- Top Navigation -->
+      <nav class="px-5 pt-4 pb-2 flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center">
+          <button onclick="navigateTo('screen-profile')" aria-label="Orqaga" class="p-1.5 -ml-2 text-white hover:opacity-75 active:scale-95 transition" type="button">
+            <svg class="w-6 h-6 stroke-[2.4]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M15.75 19.5L8.25 12l7.5-7.5" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </button>
+          <h1 class="text-[19px] font-bold text-white ml-2 tracking-tight">
+            Raqamli hujjatlar va ma'lumotlar
+          </h1>
+        </div>
+      </nav>
+
+      <!-- Segmented Tab Switcher -->
+      <div class="w-full mt-2 border-b border-gray-800/80 shrink-0">
+        <div class="grid grid-cols-2">
+          <!-- Active Tab: Elektron hujjatlar -->
+          <button id="tab-btn-docs" onclick="switchDocTab('docs')" class="relative pb-3 text-center transition-colors">
+            <span id="tab-label-docs" class="text-[15px] font-medium text-white tracking-normal">Elektron hujjatlar</span>
+            <span id="tab-indicator-docs" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#3CD5C9] shadow-sm"></span>
+          </button>
+          <!-- Tab: Ma'lumotlar -->
+          <button id="tab-btn-info" onclick="switchDocTab('info')" class="relative pb-3 flex items-center justify-center space-x-1.5 transition-colors">
+            <span id="tab-label-info" class="text-[15px] font-medium text-[#8F94A0] tracking-normal">Ma'lumotlar</span>
+            <span class="w-[7px] h-[7px] bg-[#22C55E] rounded-full inline-block"></span>
+            <span id="tab-indicator-info" class="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#3CD5C9] shadow-sm hidden"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tab Content 1: Elektron Hujjatlar -->
+      <main id="tab-content-docs" class="flex-1 px-4 pt-3 overflow-y-auto space-y-1">
+        
+        <!-- 1. ID karta / pasport -> Opens Screen 3 -->
+        <div onclick="navigateTo('screen-id-card')" class="flex items-center justify-between py-2.5 px-2 hover:bg-white/5 active:bg-white/10 rounded-2xl transition cursor-pointer group">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 rounded-2xl bg-[#D6E6F7] flex items-center justify-center shrink-0 shadow-sm group-hover:scale-105 transition-transform">
+              <svg class="w-6 h-6 text-[#1A2536]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <rect height="16" rx="3" stroke-linecap="round" stroke-linejoin="round" width="18" x="3" y="4"></rect>
+                <circle cx="8" cy="10" r="2"></circle>
+                <path d="M6 16c0-1.5 1-2.5 2.5-2.5h0c1.5 0 2.5 1 2.5 2.5" stroke-linecap="round"></path>
+                <path d="M14 9h4M14 13h4M14 16h2" stroke-linecap="round"></path>
+              </svg>
+            </div>
+            <div>
+              <span class="text-[15px] font-medium text-white block">ID karta / pasport</span>
+              <span class="text-[11px] text-emerald-400 font-normal">Faol • AE4451634</span>
+            </div>
+          </div>
+          <svg class="w-4 h-4 text-[#8C93A3] stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+
+        <!-- 2. Haydovchilik guvohnomasi -->
+        <div onclick="openDocumentModal('Haydovchilik guvohnomasi', 'Haydovchilik guvohnomasi mavjud emas yoki rasmiylashtirilmagan', 'license')" class="flex items-center justify-between py-2.5 px-2 hover:bg-white/5 active:bg-white/10 rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 rounded-2xl bg-[#D6E6F7] flex items-center justify-center shrink-0 shadow-sm">
+              <svg class="w-6 h-6 text-[#1A2536]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <rect height="16" rx="3" width="18" x="3" y="4"></rect>
+                <circle cx="8.5" cy="11.5" r="2.5"></circle>
+                <path d="M14 9h4M14 12h4M14 15h4" stroke-linecap="round"></path>
+              </svg>
+            </div>
+            <span class="text-[15px] font-normal text-white">Haydovchilik guvohnomasi</span>
+          </div>
+          <svg class="w-4 h-4 text-[#8C93A3] stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+
+        <!-- 3. Xorijga chiqish pasporti -->
+        <div onclick="openDocumentModal('Xorijga chiqish pasporti', 'Xorijga chiqish biometrik pasporti mavjud', 'passport')" class="flex items-center justify-between py-2.5 px-2 hover:bg-white/5 active:bg-white/10 rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 rounded-2xl bg-[#D6E6F7] flex items-center justify-center shrink-0 shadow-sm">
+              <svg class="w-6 h-6 text-[#1A2536]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <rect height="18" rx="2.5" width="14" x="5" y="3"></rect>
+                <circle cx="12" cy="10" r="2.5"></circle>
+                <path d="M9 16h6" stroke-linecap="round"></path>
+              </svg>
+            </div>
+            <span class="text-[15px] font-normal text-white">Xorijga chiqish pasporti</span>
+          </div>
+          <svg class="w-4 h-4 text-[#8C93A3] stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+
+        <!-- 4. Tug'ilganlik guvohnomasi -->
+        <div onclick="openDocumentModal('Tug\'ilganlik guvohnomasi', 'I-TN № 0984124 • FHDYo Toshkent shahar', 'birth')" class="flex items-center justify-between py-2.5 px-2 hover:bg-white/5 active:bg-white/10 rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 rounded-2xl bg-[#D6E6F7] flex items-center justify-center shrink-0 shadow-sm">
+              <svg class="w-6 h-6 text-[#1A2536]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="7"></circle>
+                <circle cx="9.5" cy="10.5" fill="currentColor" r="1"></circle>
+                <circle cx="14.5" cy="10.5" fill="currentColor" r="1"></circle>
+                <path d="M10 14.5c.6.6 1.3.9 2 .9s1.4-.3 2-.9" stroke-linecap="round"></path>
+              </svg>
+            </div>
+            <span class="text-[15px] font-normal text-white">Tug'ilganlik guvohnomasi</span>
+          </div>
+          <svg class="w-4 h-4 text-[#8C93A3] stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+
+        <!-- 5. Nikohdan ajralganlik haqida guvohnoma -->
+        <div onclick="openDocumentModal('Nikohdan ajralganlik haqida guvohnoma', 'Ma\'lumot topilmadi', 'other')" class="flex items-center justify-between py-2.5 px-2 hover:bg-white/5 active:bg-white/10 rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 rounded-2xl bg-[#D6E6F7] flex items-center justify-center shrink-0 shadow-sm">
+              <svg class="w-6 h-6 text-[#1A2536]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <ellipse cx="9" cy="14" rx="4.5" ry="4"></ellipse>
+                <ellipse cx="15" cy="10" rx="4.5" ry="4"></ellipse>
+              </svg>
+            </div>
+            <span class="text-[15px] font-normal text-white">Nikohdan ajralganlik haqida guvohnoma</span>
+          </div>
+          <svg class="w-4 h-4 text-[#8C93A3] stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+
+        <!-- 6. Pensiya guvohnomasi -->
+        <div onclick="openDocumentModal('Pensiya guvohnomasi', 'Pensiya yoshiga yetmagan', 'other')" class="flex items-center justify-between py-2.5 px-2 hover:bg-white/5 active:bg-white/10 rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 rounded-2xl bg-[#D6E6F7] flex items-center justify-center shrink-0 shadow-sm">
+              <svg class="w-6 h-6 text-[#1A2536]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <circle cx="11" cy="5" r="2"></circle>
+                <path d="M10 9l1 5-2 5M12 10l2 3-1 6M16 11v9" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+            <span class="text-[15px] font-normal text-white">Pensiya guvohnomasi</span>
+          </div>
+          <svg class="w-4 h-4 text-[#8C93A3] stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+
+        <!-- 7. O'z o'zini band qilgan shaxs malumotnomasi -->
+        <div onclick="openDocumentModal('O\'z o\'zini band qilgan shaxs', 'Ro\'yxatdan o\'tgan • IT va Dasturlash xizmatlari', 'self_emp')" class="flex items-center justify-between py-2.5 px-2 hover:bg-white/5 active:bg-white/10 rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 rounded-2xl bg-[#D6E6F7] flex items-center justify-center shrink-0 shadow-sm">
+              <svg class="w-6 h-6 text-[#1A2536]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" stroke-linecap="round" stroke-linejoin="round"></path>
+                <rect height="13" rx="3" width="16" x="4" y="7"></rect>
+              </svg>
+            </div>
+            <span class="text-[15px] font-normal text-white">O'z o'zini band qilgan shaxs malumotnomasi</span>
+          </div>
+          <svg class="w-4 h-4 text-[#8C93A3] stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+
+        <!-- 8. Nogironlik guvohnomasi -->
+        <div onclick="openDocumentModal('Nogironlik guvohnomasi', 'Mavjud emas', 'other')" class="flex items-center justify-between py-2.5 px-2 hover:bg-white/5 active:bg-white/10 rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 rounded-2xl bg-[#D6E6F7] flex items-center justify-center shrink-0 shadow-sm">
+              <svg class="w-6 h-6 text-[#1A2536]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <circle cx="12" cy="4.5" r="1.8"></circle>
+                <path d="M12 7.5v6l4 2" stroke-linecap="round" stroke-linejoin="round"></path>
+                <path d="M9.5 13a4.5 4.5 0 104.5 4.5" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+            <span class="text-[15px] font-normal text-white">Nogironlik guvohnomasi</span>
+          </div>
+          <svg class="w-4 h-4 text-[#8C93A3] stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+
+        <!-- 9. YaTT guvohnomasi -->
+        <div onclick="openDocumentModal('YaTT guvohnomasi', 'Faol YaTT mavjud emas', 'other')" class="flex items-center justify-between py-2.5 px-2 hover:bg-white/5 active:bg-white/10 rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 rounded-2xl bg-[#D6E6F7] flex items-center justify-center shrink-0 shadow-sm">
+              <svg class="w-6 h-6 text-[#1A2536]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M6 3h12a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V5a2 2 0 012-2z" stroke-linecap="round" stroke-linejoin="round"></path>
+                <path d="M8 8h5M8 12h8M8 16h5" stroke-linecap="round"></path>
+              </svg>
+            </div>
+            <span class="text-[15px] font-normal text-white">YaTT guvohnomasi</span>
+          </div>
+          <svg class="w-4 h-4 text-[#8C93A3] stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+
+        <!-- 10. Nikoh to'g'risidagi guvohnoma -->
+        <div onclick="openDocumentModal('Nikoh to\'g\'risidagi guvohnoma', 'Mavjud emas', 'other')" class="flex items-center justify-between py-2.5 px-2 hover:bg-white/5 active:bg-white/10 rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 rounded-2xl bg-[#D6E6F7] flex items-center justify-center shrink-0 shadow-sm">
+              <svg class="w-6 h-6 text-[#1A2536]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <circle cx="9" cy="12" r="5"></circle>
+                <circle cx="15" cy="12" r="5"></circle>
+              </svg>
+            </div>
+            <span class="text-[15px] font-normal text-white">Nikoh to'g'risidagi guvohnoma</span>
+          </div>
+          <svg class="w-4 h-4 text-[#8C93A3] stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+
+        <!-- 11. Harbiy guvohnoma -->
+        <div onclick="openDocumentModal('Harbiy guvohnoma', 'Chaqiriq uchastkasida qayd etilgan guvohnoma', 'military')" class="flex items-center justify-between py-2.5 px-2 hover:bg-white/5 active:bg-white/10 rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 rounded-2xl bg-[#D6E6F7] flex items-center justify-center shrink-0 shadow-sm">
+              <svg class="w-6 h-6 text-[#1A2536]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M12 3s7 2.5 7 9c0 6-7 9.5-7 9.5S5 18 5 12c0-6.5 7-9 7-9z" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+            <span class="text-[15px] font-normal text-white">Harbiy guvohnoma</span>
+          </div>
+          <svg class="w-4 h-4 text-[#8C93A3] stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+
+        <!-- 12. Kadastr pasport -->
+        <div onclick="openDocumentModal('Kadastr pasport', 'Kadastr raqami: 10:04:02:01:03:0045', 'cadastre')" class="flex items-center justify-between py-2.5 px-2 hover:bg-white/5 active:bg-white/10 rounded-2xl transition cursor-pointer">
+          <div class="flex items-center space-x-3.5">
+            <div class="w-11 h-11 rounded-2xl bg-[#D6E6F7] flex items-center justify-center shrink-0 shadow-sm">
+              <svg class="w-6 h-6 text-[#1A2536]" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24">
+                <path d="M3 10l9-7 9 7v10a1 1 0 01-1 1H4a1 1 0 01-1-1V10z" stroke-linecap="round" stroke-linejoin="round"></path>
+                <path d="M9 14l2 2 4-4" stroke-linecap="round" stroke-linejoin="round"></path>
+              </svg>
+            </div>
+            <span class="text-[15px] font-normal text-white">Kadastr pasport</span>
+          </div>
+          <svg class="w-4 h-4 text-[#8C93A3] stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8.25 4.5l7.5 7.5-7.5 7.5" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+
+      </main>
+
+      <!-- Tab Content 2: Ma'lumotlar (Information List) -->
+      <main id="tab-content-info" class="flex-1 px-4 pt-3 overflow-y-auto space-y-2 hidden">
+        <div onclick="showToast('JSHSHIR nusxalandi')" class="bg-[#181B20] p-4 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer active:scale-[0.99] transition">
+          <div>
+            <span class="text-xs text-neutral-400 block">JSHSHIR (PINFL)</span>
+            <span class="text-base font-semibold text-white tracking-wide">50404095430026</span>
+          </div>
+          <span class="text-xs text-sky-400 font-medium">Nusxalash</span>
+        </div>
+
+        <div onclick="showToast('STIR raqami mavjud emas')" class="bg-[#181B20] p-4 rounded-2xl border border-white/5 flex items-center justify-between cursor-pointer active:scale-[0.99] transition">
+          <div>
+            <span class="text-xs text-neutral-400 block">STIR (INN)</span>
+            <span class="text-base font-semibold text-white tracking-wide">Jismoniy shaxs JSHSHIRga bog'langan</span>
+          </div>
+          <span class="text-xs text-neutral-500">Faol</span>
+        </div>
+
+        <div class="bg-[#181B20] p-4 rounded-2xl border border-white/5 flex items-center justify-between">
+          <div>
+            <span class="text-xs text-neutral-400 block">Jamg'arib boriladigan pensiya (INPS)</span>
+            <span class="text-sm font-medium text-white tracking-wide">30404090025</span>
+          </div>
+          <span class="text-xs bg-emerald-900/60 text-emerald-300 px-2 py-0.5 rounded">Mavjud</span>
+        </div>
+
+        <div class="bg-[#181B20] p-4 rounded-2xl border border-white/5 flex items-center justify-between">
+          <div>
+            <span class="text-xs text-neutral-400 block">Ruhiy dispanser hisobida turmaslik</span>
+            <span class="text-sm font-medium text-emerald-400">Hisobda turmaydi</span>
+          </div>
+          <svg class="w-5 h-5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+        </div>
+
+        <div class="bg-[#181B20] p-4 rounded-2xl border border-white/5 flex items-center justify-between">
+          <div>
+            <span class="text-xs text-neutral-400 block">Narkologiya dispanseri hisobida turmaslik</span>
+            <span class="text-sm font-medium text-emerald-400">Hisobda turmaydi</span>
+          </div>
+          <svg class="w-5 h-5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+        </div>
+      </main>
+
+    </section>
+
+
+    <!-- ======================================================== -->
+    <!-- SCREEN 3: ID KARTA KO'RSATISH (AUTHENTIC SHOWCASE) -->
+    <!-- ======================================================== -->
+    <section id="screen-id-card" class="app-screen flex-col flex-1 overflow-y-auto pb-4">
+      
+      <!-- Top Navigation -->
+      <nav class="px-5 pt-3 pb-2 flex items-center justify-between z-20 shrink-0">
+        <!-- Back Button -->
+        <button onclick="navigateTo('screen-docs')" aria-label="Go back" class="w-10 h-10 rounded-full bg-[#24262b] text-neutral-200 flex items-center justify-center hover:bg-[#2e3137] active:scale-95 transition-all">
+          <svg class="w-5 h-5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path d="M15 19l-7-7 7-7" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+        </button>
+
+        <!-- Screen Title -->
+        <h1 class="text-[17px] font-bold text-white tracking-tight">ID karta / pasport</h1>
+
+        <!-- Action Buttons (Refresh & Share) -->
+        <div class="flex items-center space-x-2">
+          <!-- Refresh with spin animation -->
+          <button id="card-refresh-btn" onclick="refreshIdCardData()" aria-label="Refresh" class="w-10 h-10 rounded-full bg-[#24262b] text-neutral-200 flex items-center justify-center hover:bg-[#2e3137] active:scale-95 transition-all">
+            <svg id="refresh-spinner" class="w-5 h-5 stroke-[2] transition-transform duration-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </button>
+          <!-- Share -->
+          <button onclick="shareDocument()" aria-label="Share" class="w-10 h-10 rounded-full bg-[#24262b] text-neutral-200 flex items-center justify-center hover:bg-[#2e3137] active:scale-95 transition-all">
+            <svg class="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </button>
+        </div>
+      </nav>
+
+      <!-- Sync Info Pill -->
+      <div class="flex justify-center mt-1 mb-2 z-10 shrink-0">
+        <div class="bg-[#24272e]/90 backdrop-blur border border-white/5 px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-inner">
+          <svg class="w-3.5 h-3.5 text-neutral-400 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="9"></circle>
+            <path d="M12 7v5l3 2" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg>
+          <p class="text-[11px] text-neutral-300 font-normal">
+            Oxirgi yangilanish: <span id="sync-timestamp" class="text-[#e29338] font-medium ml-0.5">17 oktabr 2026</span>
+          </p>
+        </div>
+      </div>
+
+      <!-- ID Card Center Showcase (3D Flippable Container) -->
+      <section class="flex-1 px-4 py-1 flex items-center justify-center relative overflow-hidden select-none perspective-1000">
+        
+        <!-- The Card Flipper -->
+        <div id="card-3d-flipper" onclick="flipCard()" class="relative w-[320px] h-[510px] transform-style-3d transition-transform duration-700 cursor-pointer shadow-[0_20px_50px_rgba(0,0,0,0.7)] rounded-[22px]">
+          
+          <!-- FRONT SIDE OF CARD (Rotated portrait view matching real screenshot) -->
+          <div class="absolute inset-0 backface-hidden rounded-[22px] overflow-hidden border border-white/20 bg-neutral-900">
+            <img src="assets/id_card_rotated.png" alt="ID Karta Abdulxakimov Muhammadrizo" class="w-full h-full object-cover select-none" onerror="this.src='stitch_mygov_mobile_app_clone/id_card_rotated.png'"/>
+            <!-- Glass gloss -->
+            <div class="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none"></div>
+          </div>
+
+          <!-- BACK SIDE OF CARD (Authentic e-ID back with chip, MRZ and registration) -->
+          <div class="absolute inset-0 backface-hidden rotate-y-180 rounded-[22px] overflow-hidden border border-sky-400/30 id-guilloche-bg p-4 flex flex-col justify-between text-neutral-800 shadow-2xl">
+            <!-- Back Header: State & Authority -->
+            <div class="flex justify-between items-start border-b border-sky-200 pb-2">
+              <div>
+                <h3 class="text-[11px] font-black uppercase text-[#0d4f7c] tracking-tight">O'ZBEKISTON RESPUBLIKASI</h3>
+                <p class="text-[7px] text-neutral-500 uppercase tracking-wider font-semibold">REPUBLIC OF UZBEKISTAN</p>
+              </div>
+              <!-- Metallic Golden Chip -->
+              <div class="w-14 h-11 bg-gradient-to-tr from-amber-200 via-amber-400 to-amber-200 rounded-md border border-amber-600/70 p-1 flex items-center justify-center relative shadow-sm">
+                <div class="w-full h-full border border-amber-700/60 rounded flex items-center justify-center">
+                  <div class="w-5 h-5 border-l border-r border-amber-800/60"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Back Middle Details -->
+            <div class="space-y-2 text-[9px] my-auto">
+              <div>
+                <span class="text-[6.5px] uppercase text-neutral-500 block font-semibold">JSHSHIR / Personal PINFL</span>
+                <span class="font-mono font-bold text-xs text-neutral-900 tracking-wider">50404095430026</span>
+              </div>
+              <div>
+                <span class="text-[6.5px] uppercase text-neutral-500 block font-semibold">Doimiy ro'yxatdan o'tgan joyi / Address</span>
+                <span class="font-bold text-[10px] text-neutral-900 leading-tight block">TOSHKENT SHAHAR, YUNUSOBOD TUMANI, BOG'ISHAMOL KO'CHASI, 45-UY</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <span class="text-[6.5px] uppercase text-neutral-500 block font-semibold">Bergan organ / Authority</span>
+                  <span class="font-bold text-[9.5px] text-neutral-900 leading-tight block">TOSHKENT SH. IIBB XATTB</span>
+                </div>
+                <div>
+                  <span class="text-[6.5px] uppercase text-neutral-500 block font-semibold">Hujjat turi / Document type</span>
+                  <span class="font-bold text-[9.5px] text-neutral-900 leading-tight block">I / IDENTITY CARD</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Back Footer: Official MRZ Zone -->
+            <div class="pt-2 border-t border-sky-200/80 font-mono text-[8px] text-neutral-800 leading-tight tracking-wider bg-white/50 p-1.5 rounded">
+              <p>I&lt;UZBAE4451634&lt;6&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;</p>
+              <p>0904047M3510025UZB&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;02</p>
+              <p>ABDULXAKIMOV&lt;&lt;MUHAMMADRIZO&lt;&lt;&lt;&lt;&lt;</p>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+      <!-- Bottom Action Area -->
+      <footer class="px-5 pt-1 pb-4 flex flex-col gap-2.5 z-20 shrink-0" data-purpose="card-actions">
+        
+        <div class="flex items-center space-x-3 w-full">
+          <!-- Flip Card Button -->
+          <button onclick="flipCard()" aria-label="Aylantirish / Flip card" class="w-12 h-12 rounded-2xl bg-[#24262b] text-neutral-300 flex items-center justify-center hover:bg-[#2d3036] active:scale-95 transition-all shadow-md shrink-0">
+            <svg class="w-5 h-5 stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+          </button>
+
+          <!-- "Ko'rsatish" Primary Button (Opens verification sheet) -->
+          <button onclick="openShowVerificationSheet()" aria-label="Ko'rsatish" class="flex-1 h-12 bg-[#92bcf4] hover:bg-[#a1c6fa] text-[#0d1c33] font-semibold text-[15px] rounded-2xl flex items-center justify-center space-x-2 active:scale-[0.98] transition-all shadow-lg shadow-sky-950/20">
+            <svg class="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+            <span class="tracking-tight">Ko'rsatish</span>
+          </button>
+
+          <!-- PDF Download Action Button -->
+          <button onclick="openPdfModal()" aria-label="PDF shaklida yuklab olish" class="w-12 h-12 rounded-2xl bg-[#24262b] text-neutral-300 hover:text-white flex items-center justify-center hover:bg-[#2d3036] active:scale-95 transition-all shadow-md shrink-0 relative group">
+            <svg class="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg>
+            <span class="absolute -top-1 -right-1 bg-amber-400 text-neutral-900 text-[8px] font-black px-1 py-0.5 rounded leading-none">PDF</span>
+          </button>
+        </div>
+
+        <!-- Official PDF Certificate Banner Button -->
+        <button onclick="openPdfModal()" class="w-full py-2.5 px-3 bg-[#1e2025] hover:bg-[#25282f] active:scale-[0.99] border border-white/5 rounded-2xl flex items-center justify-between text-neutral-300 text-xs transition-all">
+          <div class="flex items-center gap-2.5">
+            <div class="w-7 h-7 rounded-lg bg-[#ce1126]/20 text-[#ce1126] flex items-center justify-center font-bold text-[10px]">PDF</div>
+            <div class="flex flex-col text-left">
+              <span class="text-[12px] font-semibold text-neutral-200 leading-tight">PDF shaklida yuklab olish</span>
+              <span class="text-[9.5px] text-neutral-400 leading-none mt-0.5">QR kodli rasmiy nusxa • Yuridik kuchga ega</span>
+            </div>
+          </div>
+          <div class="flex items-center gap-1 text-[11px] font-medium text-[#92bcf4]">
+            <span>Yuklab olish</span>
+            <svg class="w-3.5 h-3.5 stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5m-5-7v12" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+          </div>
+        </button>
+
+      </footer>
+
+    </section>
+
+
+    <!-- ==================== FLOATING BOTTOM NAVIGATION BAR ==================== -->
+    <nav id="bottom-navbar" class="fixed md:absolute bottom-3 left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[396px] h-[66px] bg-[#1a1d22]/95 backdrop-blur-md rounded-full px-2 flex items-center justify-between border border-white/[0.08] shadow-2xl z-40 select-none" data-purpose="bottom-tab-bar">
+      
+      <!-- Tab 1: Asosiy -->
+      <button onclick="openNavTab('asosiy')" class="flex flex-col items-center justify-center flex-1 text-[#8b8f97] hover:text-white transition py-1">
+        <svg class="w-5 h-5 stroke-current fill-none" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        <span class="text-[10px] font-medium tracking-tight mt-0.5">Asosiy</span>
+      </button>
+
+      <!-- Tab 2: Xizmatlar -->
+      <button onclick="openNavTab('xizmatlar')" class="flex flex-col items-center justify-center flex-1 text-[#8b8f97] hover:text-white transition py-1">
+        <svg class="w-5 h-5 stroke-current fill-none" stroke-width="2" viewBox="0 0 24 24">
+          <rect height="6.5" rx="1.5" width="6.5" x="3.5" y="3.5"></rect>
+          <rect height="6.5" rx="1.5" width="6.5" x="14" y="3.5"></rect>
+          <rect height="6.5" rx="1.5" width="6.5" x="3.5" y="14"></rect>
+          <rect height="6.5" rx="1.5" width="6.5" x="14" y="14"></rect>
+        </svg>
+        <span class="text-[10px] font-medium tracking-tight mt-0.5">Xizmatlar</span>
+      </button>
+
+      <!-- Center Action: QR Scanner Floating Button -->
+      <div class="flex items-center justify-center px-1">
+        <button onclick="openQrScannerModal()" aria-label="QR Scanner" class="w-[48px] h-[48px] rounded-full bg-[#32363e] flex items-center justify-center text-white border border-white/10 active:scale-95 transition shadow-lg hover:bg-[#3d424c]">
+          <svg class="w-6 h-6 stroke-current fill-none text-[#74abf9]" stroke-width="2.2" viewBox="0 0 24 24">
+            <path d="M3.75 4.5a.75.75 0 01.75-.75h3a.75.75 0 010 1.5h-3a.75.75 0 01-.75-.75zm0 15a.75.75 0 00.75.75h3a.75.75 0 000-1.5h-3a.75.75 0 00-.75.75zm16.5 0a.75.75 0 01-.75.75h-3a.75.75 0 010-1.5h3a.75.75 0 01.75.75zm0-15a.75.75 0 00-.75-.75h-3a.75.75 0 000 1.5h3a.75.75 0 00.75-.75z" stroke-linecap="round" stroke-linejoin="round"></path>
+            <rect class="fill-current text-[#74abf9]" height="3.5" rx="0.5" width="3.5" x="7" y="7"></rect>
+            <rect class="fill-current text-[#74abf9]" height="3.5" rx="0.5" width="3.5" x="13.5" y="7"></rect>
+            <rect class="fill-current text-[#74abf9]" height="3.5" rx="0.5" width="3.5" x="7" y="13.5"></rect>
+            <rect class="fill-current text-[#74abf9]" height="3.5" rx="0.5" width="3.5" x="13.5" y="13.5"></rect>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Tab 4: To'lovlar -->
+      <button onclick="openNavTab('tolovlar')" class="flex flex-col items-center justify-center flex-1 text-[#8b8f97] hover:text-white transition py-1">
+        <svg class="w-5 h-5 stroke-current fill-none" stroke-width="2" viewBox="0 0 24 24">
+          <path d="M21 12a2.25 2.25 0 00-2.25-2.25H15a3 3 0 11-6 0H5.25A2.25 2.25 0 003 12m18 0v6a2.25 2.25 0 01-2.25 2.25H5.25A2.25 2.25 0 013 18v-6m18 0V9M3 12V9m18 0a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 9m18 0V6a2.25 2.25 0 00-2.25-2.25H5.25A2.25 2.25 0 003 6v3" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg>
+        <span class="text-[10px] font-medium tracking-tight mt-0.5">To'lovlar</span>
+      </button>
+
+      <!-- Tab 5: Profilim (Active) -->
+      <div class="flex items-center justify-center">
+        <button onclick="navigateTo('screen-profile')" class="h-[48px] px-3.5 bg-[#343b47] rounded-full flex flex-col items-center justify-center text-white shadow-sm border border-white/10 active:scale-95 transition">
+          <svg class="w-5 h-5 fill-current text-white" viewBox="0 0 24 24">
+            <path clip-rule="evenodd" d="M7.5 6a4.5 4.5 0 119 0 4.5 4.5 0 01-9 0zM3.751 20.105a8.25 8.25 0 0116.498 0 .75.75 0 01-.437.695A18.683 18.683 0 0112 22.5c-2.786 0-5.433-.608-7.812-1.7a.75.75 0 01-.437-.695z" fill-rule="evenodd"></path>
+          </svg>
+          <span class="text-[10px] font-semibold tracking-tight mt-0.5">Profilim</span>
+        </button>
+      </div>
+
+    </nav>
+
+    <!-- iOS Home Indicator bar -->
+    <div class="w-32 h-1 bg-white/30 rounded-full mx-auto my-1 shrink-0 z-40 pointer-events-none"></div>
+
+  </div> <!-- End Mobile Device Wrapper -->
+
+
+  <!-- ======================================================== -->
+  <!-- MODALS & BOTTOM SHEETS -->
+  <!-- ======================================================== -->
+
+  <!-- 1. "KO'RSATISH" QR VERIFICATION BOTTOM SHEET -->
+  <div id="verification-sheet" class="fixed inset-0 z-50 flex flex-col justify-end hidden">
+    <div onclick="closeShowVerificationSheet()" class="sheet-backdrop absolute inset-0"></div>
+    <div class="sheet-enter relative w-full max-w-[430px] mx-auto bg-[#181B20] border-t border-white/10 rounded-t-[32px] p-6 text-white shadow-2xl flex flex-col items-center z-10 max-h-[90vh] overflow-y-auto">
+      
+      <!-- Grab Handle -->
+      <div class="w-12 h-1.5 bg-neutral-600 rounded-full mb-4"></div>
+      
+      <!-- Header -->
+      <h2 class="text-lg font-bold tracking-tight text-center">Hujjatni tekshirish uchun QR kod</h2>
+      <p class="text-xs text-neutral-400 mt-1 text-center">Tashkilot xodimi tekshirishi uchun ushbu QR kodni ko'rsating</p>
+
+      <!-- Animated QR Code Card -->
+      <div class="relative mt-5 p-4 bg-white rounded-3xl shadow-2xl flex flex-col items-center">
+        <!-- SVG QR Code with center logo -->
+        <div class="relative w-[190px] h-[190px] bg-white flex items-center justify-center overflow-hidden rounded-xl">
+          <svg class="w-full h-full" viewBox="0 0 100 100" fill="none">
+            <!-- Position Detection Patterns (Corners) -->
+            <rect x="5" y="5" width="24" height="24" rx="4" fill="#000" />
+            <rect x="9" y="9" width="16" height="16" rx="2" fill="#fff" />
+            <rect x="13" y="13" width="8" height="8" rx="1.5" fill="#000" />
+
+            <rect x="71" y="5" width="24" height="24" rx="4" fill="#000" />
+            <rect x="75" y="9" width="16" height="16" rx="2" fill="#fff" />
+            <rect x="79" y="13" width="8" height="8" rx="1.5" fill="#000" />
+
+            <rect x="5" y="71" width="24" height="24" rx="4" fill="#000" />
+            <rect x="9" y="75" width="16" height="16" rx="2" fill="#fff" />
+            <rect x="13" y="79" width="8" height="8" rx="1.5" fill="#000" />
+
+            <!-- Simulated QR Data Grid -->
+            <rect x="35" y="8" width="5" height="5" fill="#000"/>
+            <rect x="45" y="8" width="5" height="5" fill="#000"/>
+            <rect x="55" y="8" width="5" height="5" fill="#000"/>
+            <rect x="35" y="18" width="5" height="5" fill="#000"/>
+            <rect x="50" y="18" width="5" height="5" fill="#000"/>
+
+            <rect x="8" y="35" width="5" height="5" fill="#000"/>
+            <rect x="18" y="35" width="5" height="5" fill="#000"/>
+            <rect x="8" y="45" width="5" height="5" fill="#000"/>
+            <rect x="23" y="45" width="5" height="5" fill="#000"/>
+            <rect x="13" y="55" width="5" height="5" fill="#000"/>
+
+            <rect x="75" y="35" width="5" height="5" fill="#000"/>
+            <rect x="85" y="35" width="5" height="5" fill="#000"/>
+            <rect x="80" y="45" width="5" height="5" fill="#000"/>
+            <rect x="75" y="55" width="5" height="5" fill="#000"/>
+            <rect x="85" y="55" width="5" height="5" fill="#000"/>
+
+            <rect x="35" y="75" width="5" height="5" fill="#000"/>
+            <rect x="45" y="75" width="5" height="5" fill="#000"/>
+            <rect x="55" y="75" width="5" height="5" fill="#000"/>
+            <rect x="40" y="85" width="5" height="5" fill="#000"/>
+            <rect x="50" y="85" width="5" height="5" fill="#000"/>
+            <rect x="60" y="85" width="5" height="5" fill="#000"/>
+
+            <!-- Center Center Squares -->
+            <rect x="33" y="33" width="34" height="34" rx="4" fill="#f8fafc" />
+            <circle cx="50" cy="50" r="14" fill="#0ea5e9" />
+            <path d="M44 50l4 4 8-8" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+
+          <!-- Subtle Scanning Animation Line -->
+          <div class="scanner-line absolute left-0 right-0 h-0.5 bg-sky-500 shadow-[0_0_10px_#0ea5e9] pointer-events-none"></div>
+        </div>
+
+        <!-- Timer Pill -->
+        <div class="mt-3 flex items-center space-x-1.5 text-xs text-neutral-800 font-semibold bg-neutral-100 px-3 py-1 rounded-full">
+          <svg class="w-3.5 h-3.5 text-amber-600 animate-spin" style="animation-duration: 4s;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span>Amal qilish muddati: <span id="qr-countdown" class="text-sky-700 font-bold">02:59</span></span>
+        </div>
+      </div>
+
+      <!-- Document Holder Details -->
+      <div class="w-full mt-4 bg-neutral-900/80 p-3.5 rounded-2xl border border-white/5 space-y-1.5 text-xs">
+        <div class="flex justify-between">
+          <span class="text-neutral-400">Fuqaro:</span>
+          <span class="font-bold text-white uppercase">Abdulxakimov Muhammadrizo</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-neutral-400">Karta raqami:</span>
+          <span class="font-mono font-bold text-sky-400">AE4451634</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-neutral-400">Holati:</span>
+          <span class="font-semibold text-emerald-400 flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            Haqiqiy (Davlat reyestrida faol)
+          </span>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="w-full mt-5 flex gap-3">
+        <button onclick="resetQrTimer()" class="flex-1 py-3 bg-[#24272E] hover:bg-[#2d313a] active:scale-95 rounded-2xl text-xs font-semibold text-white transition flex items-center justify-center gap-1.5">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Yangilash
+        </button>
+        <button onclick="closeShowVerificationSheet()" class="flex-1 py-3 bg-[#92BCF4] hover:bg-[#a3c9fa] active:scale-95 rounded-2xl text-xs font-bold text-[#0D1C33] transition">
+          Yopish
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+
+  <!-- 2. OFFICIAL PDF CERTIFICATE MODAL -->
+  <div id="pdf-modal" class="fixed inset-0 z-50 flex items-center justify-center px-4 hidden">
+    <div onclick="closePdfModal()" class="sheet-backdrop absolute inset-0"></div>
+    <div class="relative w-full max-w-[390px] bg-white text-neutral-900 rounded-3xl p-6 shadow-2xl z-10 max-h-[85vh] overflow-y-auto">
+      
+      <!-- Certificate Header -->
+      <div class="flex items-center justify-between border-b border-neutral-200 pb-3">
+        <div class="flex items-center space-x-2">
+          <div class="w-8 h-8 rounded-full bg-sky-100 flex items-center justify-center text-sky-800 font-bold text-xs">
+            UZB
+          </div>
+          <div>
+            <h3 class="text-xs font-black uppercase text-neutral-800">O'ZBEKISTON RESPUBLIKASI</h3>
+            <p class="text-[9px] text-neutral-500">Yagona interaktiv davlat xizmatlari portali</p>
+          </div>
+        </div>
+        <button onclick="closePdfModal()" class="text-neutral-400 hover:text-neutral-700 p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Certificate Body -->
+      <div class="my-4 space-y-3 text-xs">
+        <div class="text-center py-1">
+          <h4 class="font-bold text-sm text-neutral-900">ELEKTRON HUJJAT NUSXASI</h4>
+          <p class="text-[10px] text-neutral-500">№ DG-2026-AE4451634</p>
+        </div>
+
+        <div class="bg-neutral-50 p-3 rounded-xl border border-neutral-200/80 space-y-1.5 text-[11px]">
+          <div class="flex justify-between">
+            <span class="text-neutral-500">F.I.SH.:</span>
+            <span class="font-bold text-neutral-800">ABDULXAKIMOV MUHAMMADRIZO</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-neutral-500">Tug'ilgan sanasi:</span>
+            <span class="font-semibold text-neutral-800">04.04.2009</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-neutral-500">ID Karta raqami:</span>
+            <span class="font-mono font-bold text-sky-700">AE4451634</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-neutral-500">Amal qilish muddati:</span>
+            <span class="font-semibold text-neutral-800">02.10.2035</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-neutral-500">JSHSHIR:</span>
+            <span class="font-mono font-semibold text-neutral-800">50404095430026</span>
+          </div>
+        </div>
+
+        <!-- Official Stamp & Legal note -->
+        <div class="flex items-center justify-between pt-2">
+          <div class="flex flex-col">
+            <span class="text-[9px] font-bold text-emerald-700 uppercase flex items-center gap-1">
+              <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+              E-IMZO bilan tasdiqlangan
+            </span>
+            <span class="text-[8px] text-neutral-400 mt-0.5">Yuridik kuchga ega rasmiy nusxa</span>
+          </div>
+          <!-- Stamp Icon -->
+          <div class="w-12 h-12 rounded-full border-2 border-emerald-600 border-dashed flex items-center justify-center text-emerald-700 text-[7px] font-black uppercase text-center rotate-12">
+            MY.GOV<br/>TASDIQ
+          </div>
+        </div>
+      </div>
+
+      <!-- Download Button -->
+      <button onclick="downloadPdfFile()" class="w-full py-3 bg-[#198754] hover:bg-[#157347] active:scale-95 text-white font-bold rounded-2xl text-xs transition flex items-center justify-center gap-2 shadow-lg">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+        <span>PDF faylini yuklab olish</span>
+      </button>
+
+    </div>
+  </div>
+
+
+  <!-- 3. GENERIC DETAIL SHEET -->
+  <div id="detail-sheet" class="fixed inset-0 z-50 flex flex-col justify-end hidden">
+    <div onclick="closeDetailSheet()" class="sheet-backdrop absolute inset-0"></div>
+    <div class="sheet-enter relative w-full max-w-[430px] mx-auto bg-[#181B20] border-t border-white/10 rounded-t-[32px] p-6 text-white shadow-2xl z-10 max-h-[85vh] overflow-y-auto">
+      <div class="w-12 h-1.5 bg-neutral-600 rounded-full mx-auto mb-4"></div>
+      <div class="flex items-center justify-between pb-3 border-b border-white/10">
+        <h3 id="sheet-title" class="text-base font-bold text-white">Ma'lumot</h3>
+        <button onclick="closeDetailSheet()" class="text-neutral-400 hover:text-white p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div id="sheet-body" class="my-4 text-xs space-y-3">
+        <!-- Injected via JavaScript -->
+      </div>
+      <button onclick="closeDetailSheet()" class="w-full py-3 bg-[#24272E] hover:bg-[#2e323b] active:scale-95 rounded-2xl text-xs font-semibold text-white transition">
+        Yopish
+      </button>
+    </div>
+  </div>
+
+
+  <!-- 4. QR SCANNER SIMULATOR MODAL -->
+  <div id="qr-scanner-modal" class="fixed inset-0 z-50 flex flex-col justify-between bg-black/95 text-white p-6 hidden">
+    <div class="flex items-center justify-between">
+      <button onclick="closeQrScannerModal()" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+      <span class="text-sm font-semibold tracking-wide">QR Kod Skaneri</span>
+      <button onclick="toggleTorch()" id="torch-btn" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
+        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/></svg>
+      </button>
+    </div>
+
+    <!-- Reticle Frame -->
+    <div class="relative w-64 h-64 mx-auto border-2 border-sky-400 rounded-3xl flex items-center justify-center overflow-hidden">
+      <!-- Target Corner brackets -->
+      <div class="absolute top-2 left-2 w-6 h-6 border-t-4 border-l-4 border-sky-400 rounded-tl-lg"></div>
+      <div class="absolute top-2 right-2 w-6 h-6 border-t-4 border-r-4 border-sky-400 rounded-tr-lg"></div>
+      <div class="absolute bottom-2 left-2 w-6 h-6 border-b-4 border-l-4 border-sky-400 rounded-bl-lg"></div>
+      <div class="absolute bottom-2 right-2 w-6 h-6 border-b-4 border-r-4 border-sky-400 rounded-br-lg"></div>
+
+      <!-- Laser scanner line -->
+      <div class="scanner-line absolute left-0 right-0 h-1 bg-red-500 shadow-[0_0_12px_#ef4444]"></div>
+      <span class="text-xs text-white/60 tracking-wider font-mono">QR kodni joylang</span>
+    </div>
+
+    <div class="text-center pb-6">
+      <p class="text-xs text-neutral-400">my.gov.uz yoki davlat xizmatlari QR kodini skanerlang</p>
+      <button onclick="simulateSuccessfulScan()" class="mt-4 px-6 py-2.5 bg-sky-500 hover:bg-sky-400 rounded-full text-xs font-bold text-white shadow-lg">
+        Sinov skanerlash (Test Scan)
+      </button>
+    </div>
+  </div>
+
+
+  <!-- 5. SETTINGS MODAL -->
+  <div id="settings-modal" class="fixed inset-0 z-50 flex flex-col justify-end hidden">
+    <div onclick="closeSettingsModal()" class="sheet-backdrop absolute inset-0"></div>
+    <div class="sheet-enter relative w-full max-w-[430px] mx-auto bg-[#181B20] border-t border-white/10 rounded-t-[32px] p-6 text-white shadow-2xl z-10 max-h-[85vh] overflow-y-auto">
+      <div class="w-12 h-1.5 bg-neutral-600 rounded-full mx-auto mb-4"></div>
+      <div class="flex items-center justify-between pb-3 border-b border-white/10">
+        <h3 class="text-base font-bold text-white">Sozlamalar</h3>
+        <button onclick="closeSettingsModal()" class="text-neutral-400 hover:text-white p-1">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="my-4 space-y-3 text-xs">
+        <div class="flex items-center justify-between p-3 bg-neutral-900/60 rounded-xl">
+          <span class="text-neutral-300">Ilova tili</span>
+          <span class="text-sky-400 font-semibold">O'zbekcha</span>
+        </div>
+        <div class="flex items-center justify-between p-3 bg-neutral-900/60 rounded-xl">
+          <span class="text-neutral-300">Mavzu (Theme)</span>
+          <span class="text-neutral-400 font-semibold">To'q (Dark Mode)</span>
+        </div>
+        <div class="flex items-center justify-between p-3 bg-neutral-900/60 rounded-xl">
+          <span class="text-neutral-300">Biometriya (Face ID)</span>
+          <span class="text-emerald-400 font-semibold">Yoqilgan</span>
+        </div>
+        <div class="flex items-center justify-between p-3 bg-neutral-900/60 rounded-xl">
+          <span class="text-neutral-300">Versiya</span>
+          <span class="text-neutral-500 font-mono">v2.4.1 (Build 2026.10)</span>
+        </div>
+      </div>
+
+      <button onclick="closeSettingsModal()" class="w-full py-3 bg-[#24272E] hover:bg-[#2e323b] active:scale-95 rounded-2xl text-xs font-semibold text-white transition">
+        Saqlash
+      </button>
+    </div>
+  </div>
+
+
+  <!-- ==================== TOAST NOTIFICATION ==================== -->
+  <div id="app-toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 bg-[#22252B]/95 text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-2xl border border-white/10 flex items-center space-x-2 pointer-events-none backdrop-blur-md">
+    <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+    <span id="toast-text">Xabar</span>
+  </div>
+
+
+  <!-- ======================================================== -->
+  <!-- JAVASCRIPT APP LOGIC -->
+  <!-- ======================================================== -->
+  <script>
+    // App State
+    let currentScreen = 'screen-profile';
+    let isFlipped = false;
+    let isPrivacyOn = false;
+    let qrTimerInterval = null;
+    let qrSecondsRemaining = 179;
+    let isFrameVisible = true;
+
+    // Screen Navigation
+    function navigateTo(screenId) {
+      if (currentScreen === screenId) return;
+
+      const screens = ['screen-profile', 'screen-docs', 'screen-id-card'];
+      screens.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.classList.remove('active', 'exit-left');
+          el.style.display = 'none';
+        }
+      });
+
+      const nextEl = document.getElementById(screenId);
+      if (nextEl) {
+        nextEl.style.display = 'flex';
+        // Force reflow
+        void nextEl.offsetWidth;
+        nextEl.classList.add('active');
+        currentScreen = screenId;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      // Reset flip state when leaving id card
+      if (screenId !== 'screen-id-card') {
+        resetCardFlip();
+      }
+    }
+
+    // 3D Card Flip
+    function flipCard() {
+      const flipper = document.getElementById('card-3d-flipper');
+      if (!flipper) return;
+      isFlipped = !isFlipped;
+      if (isFlipped) {
+        flipper.style.transform = 'rotateY(180deg)';
+        showToast('Karta orqa tomoni ko\'rsatilmoqda');
+      } else {
+        flipper.style.transform = 'rotateY(0deg)';
+        showToast('Karta old tomoni ko\'rsatilmoqda');
+      }
+    }
+
+    function resetCardFlip() {
+      const flipper = document.getElementById('card-3d-flipper');
+      if (flipper) {
+        isFlipped = false;
+        flipper.style.transform = 'rotateY(0deg)';
+      }
+    }
+
+    // Document Tabs Switcher
+    function switchDocTab(tab) {
+      const docsContent = document.getElementById('tab-content-docs');
+      const infoContent = document.getElementById('tab-content-info');
+      const docsLabel = document.getElementById('tab-label-docs');
+      const infoLabel = document.getElementById('tab-label-info');
+      const docsInd = document.getElementById('tab-indicator-docs');
+      const infoInd = document.getElementById('tab-indicator-info');
+
+      if (tab === 'docs') {
+        docsContent.classList.remove('hidden');
+        infoContent.classList.add('hidden');
+        docsLabel.classList.add('text-white');
+        docsLabel.classList.remove('text-[#8F94A0]');
+        infoLabel.classList.remove('text-white');
+        infoLabel.classList.add('text-[#8F94A0]');
+        docsInd.classList.remove('hidden');
+        infoInd.classList.add('hidden');
+      } else {
+        docsContent.classList.add('hidden');
+        infoContent.classList.remove('hidden');
+        docsLabel.classList.remove('text-white');
+        docsLabel.classList.add('text-[#8F94A0]');
+        infoLabel.classList.add('text-white');
+        infoLabel.classList.remove('text-[#8F94A0]');
+        docsInd.classList.add('hidden');
+        infoInd.classList.remove('hidden');
+      }
+    }
+
+    // Privacy Mask Toggle
+    function togglePrivacyMode() {
+      isPrivacyOn = !isPrivacyOn;
+      const eyeOpen = document.getElementById('eye-icon-open');
+      const eyeClosed = document.getElementById('eye-icon-closed');
+      const phoneText = document.getElementById('profile-phone');
+
+      if (isPrivacyOn) {
+        eyeOpen.classList.add('hidden');
+        eyeClosed.classList.remove('hidden');
+        phoneText.textContent = '+998 (77) •••-••-••';
+        showToast('Maxfiylik rejimi yoqildi');
+      } else {
+        eyeOpen.classList.remove('hidden');
+        eyeClosed.classList.add('hidden');
+        phoneText.textContent = '+998 (77) 177-04-00';
+        showToast('Maxfiylik rejimi o\'chirildi');
+      }
+    }
+
+    // Refresh ID Card data
+    function refreshIdCardData() {
+      const spinner = document.getElementById('refresh-spinner');
+      if (spinner) {
+        spinner.classList.add('rotate-[360deg]');
+        setTimeout(() => {
+          spinner.classList.remove('rotate-[360deg]');
+        }, 700);
+      }
+      const syncEl = document.getElementById('sync-timestamp');
+      const now = new Date();
+      const months = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr'];
+      const dateStr = `${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+      if (syncEl) syncEl.textContent = `Bugun, ${dateStr}`;
+      showToast('Ma\'lumotlar muvaffaqiyatli yangilandi');
+    }
+
+    // Verification QR Sheet
+    function openShowVerificationSheet() {
+      const sheet = document.getElementById('verification-sheet');
+      sheet.classList.remove('hidden');
+      startQrTimer();
+    }
+
+    function closeShowVerificationSheet() {
+      const sheet = document.getElementById('verification-sheet');
+      sheet.classList.add('hidden');
+      clearInterval(qrTimerInterval);
+    }
+
+    function startQrTimer() {
+      clearInterval(qrTimerInterval);
+      qrSecondsRemaining = 179;
+      updateQrDisplay();
+      qrTimerInterval = setInterval(() => {
+        qrSecondsRemaining--;
+        if (qrSecondsRemaining < 0) {
+          qrSecondsRemaining = 179;
+        }
+        updateQrDisplay();
+      }, 1000);
+    }
+
+    function resetQrTimer() {
+      startQrTimer();
+      showToast('QR kod yangilandi');
+    }
+
+    function updateQrDisplay() {
+      const el = document.getElementById('qr-countdown');
+      if (!el) return;
+      const mins = Math.floor(qrSecondsRemaining / 60);
+      const secs = qrSecondsRemaining % 60;
+      el.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    // PDF Modal
+    function openPdfModal() {
+      const modal = document.getElementById('pdf-modal');
+      modal.classList.remove('hidden');
+    }
+
+    function closePdfModal() {
+      const modal = document.getElementById('pdf-modal');
+      modal.classList.add('hidden');
+    }
+
+    function downloadPdfFile() {
+      showToast('PDF rasmiy hujjati yuklab olinmoqda...');
+      setTimeout(() => {
+        window.print();
+      }, 600);
+    }
+
+    // Settings Modal
+    function openSettingsModal() {
+      document.getElementById('settings-modal').classList.remove('hidden');
+    }
+
+    function closeSettingsModal() {
+      document.getElementById('settings-modal').classList.add('hidden');
+    }
+
+    // Generic Document & Menu Sheets
+    function openDocumentModal(title, detail, type) {
+      document.getElementById('sheet-title').textContent = title;
+      const body = document.getElementById('sheet-body');
+      body.innerHTML = `
+        <div class="bg-neutral-900/80 p-4 rounded-2xl border border-white/5 space-y-2">
+          <div class="flex justify-between items-center">
+            <span class="text-neutral-400">Holati:</span>
+            <span class="font-semibold text-emerald-400">Faol reyestrda</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-neutral-400">Tafsilot:</span>
+            <span class="font-medium text-white">${detail}</span>
+          </div>
+          <div class="flex justify-between items-center">
+            <span class="text-neutral-400">E-Imzo:</span>
+            <span class="font-mono text-[10px] text-sky-400">TASDIQLANGAN</span>
+          </div>
+        </div>
+      `;
+      document.getElementById('detail-sheet').classList.remove('hidden');
+    }
+
+    function openMenuSheet(title, section) {
+      document.getElementById('sheet-title').textContent = title;
+      const body = document.getElementById('sheet-body');
+      
+      const contentMap = {
+        applications: `
+          <div class="space-y-2">
+            <div class="p-3 bg-neutral-900/80 rounded-xl border border-white/5 flex justify-between items-center">
+              <div>
+                <p class="font-semibold text-white">ID-karta rasmiylashtirish</p>
+                <p class="text-[10px] text-neutral-400">Ariza № 842109 • 03.10.2025</p>
+              </div>
+              <span class="bg-emerald-900/70 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-bold">Bajarilgan</span>
+            </div>
+            <div class="p-3 bg-neutral-900/80 rounded-xl border border-white/5 flex justify-between items-center">
+              <div>
+                <p class="font-semibold text-white">Yashash joyidan ma'lumotnoma</p>
+                <p class="text-[10px] text-neutral-400">Ariza № 540112 • 12.09.2026</p>
+              </div>
+              <span class="bg-emerald-900/70 text-emerald-300 text-[10px] px-2 py-0.5 rounded-full font-bold">Berilgan</span>
+            </div>
+          </div>
+        `,
+        health: `
+          <div class="p-3.5 bg-neutral-900/80 rounded-xl border border-white/5 space-y-2">
+            <div class="flex justify-between"><span class="text-neutral-400">Biriktirilgan poliklinika:</span><span class="font-medium text-white">52-sonli oilaviy poliklinika</span></div>
+            <div class="flex justify-between"><span class="text-neutral-400">Qon guruhi:</span><span class="font-bold text-sky-400">O (I) Rh+</span></div>
+            <div class="flex justify-between"><span class="text-neutral-400">Emlash holati:</span><span class="font-medium text-emerald-400">To'liq emlangan</span></div>
+          </div>
+        `,
+        family: `
+          <div class="p-3.5 bg-neutral-900/80 rounded-xl border border-white/5 space-y-2">
+            <div class="flex justify-between"><span class="text-neutral-400">Otasi:</span><span class="font-medium text-white">Abdulxakimov Abdulvosid</span></div>
+            <div class="flex justify-between"><span class="text-neutral-400">Oilaviy holati:</span><span class="font-medium text-white">Turmush qurmagan</span></div>
+          </div>
+        `,
+        house: `
+          <div class="p-3.5 bg-neutral-900/80 rounded-xl border border-white/5 space-y-2">
+            <div class="flex justify-between"><span class="text-neutral-400">Doimiy ro'yxat:</span><span class="font-medium text-white">Toshkent shahar, Yunusobod tumani</span></div>
+            <div class="flex justify-between"><span class="text-neutral-400">Mulk huquqi:</span><span class="font-medium text-emerald-400">Ro'yxatga olingan</span></div>
+          </div>
+        `,
+        work: `
+          <div class="p-3.5 bg-neutral-900/80 rounded-xl border border-white/5 space-y-2">
+            <div class="flex justify-between"><span class="text-neutral-400">Elektron mehnat daftarchasi:</span><span class="font-medium text-white">Faol</span></div>
+            <div class="flex justify-between"><span class="text-neutral-400">Mehnat staji:</span><span class="font-medium text-white">O'z-o'zini band qilgan (IT)</span></div>
+          </div>
+        `,
+        transport: `
+          <div class="p-3.5 bg-neutral-900/80 rounded-xl border border-white/5 space-y-2">
+            <div class="flex justify-between"><span class="text-neutral-400">Avtotransport:</span><span class="font-medium text-neutral-400">Nomida mavjud emas</span></div>
+          </div>
+        `,
+        taxes: `
+          <div class="p-3.5 bg-neutral-900/80 rounded-xl border border-white/5 space-y-2">
+            <div class="flex justify-between"><span class="text-neutral-400">Soliq qarzdorligi:</span><span class="font-bold text-emerald-400">0.00 so'm (Qarz yo'q)</span></div>
+            <div class="flex justify-between"><span class="text-neutral-400">MIB ijro ishi:</span><span class="font-bold text-emerald-400">Mavjud emas</span></div>
+            <div class="flex justify-between"><span class="text-neutral-400">Chetga chiqishga ta'qiq:</span><span class="font-bold text-emerald-400">Ta'qiq yo'q</span></div>
+          </div>
+        `
+      };
+
+      body.innerHTML = contentMap[section] || `<p class="text-neutral-400">Ma'lumotlar yuklanmoqda...</p>`;
+      document.getElementById('detail-sheet').classList.remove('hidden');
+    }
+
+    function closeDetailSheet() {
+      document.getElementById('detail-sheet').classList.add('hidden');
+    }
+
+    // QR Scanner Modal
+    function openQrScannerModal() {
+      document.getElementById('qr-scanner-modal').classList.remove('hidden');
+    }
+
+    function closeQrScannerModal() {
+      document.getElementById('qr-scanner-modal').classList.add('hidden');
+    }
+
+    function toggleTorch() {
+      const btn = document.getElementById('torch-btn');
+      btn.classList.toggle('text-amber-400');
+      showToast('Chiroq holati o\'zgardi');
+    }
+
+    function simulateSuccessfulScan() {
+      closeQrScannerModal();
+      showToast('QR kod tasdiqlandi: Davlat xizmati ma\'lumotnomasi № 41209');
+    }
+
+    // Bottom Nav items
+    function openNavTab(tab) {
+      if (tab === 'asosiy') {
+        openDocumentModal('Asosiy — my.gov.uz', 'Barcha ommabop xizmatlar, sudlanmaganlik ma\'lumotnomasi va kommunal xizmatlar', 'home');
+      } else if (tab === 'xizmatlar') {
+        openDocumentModal('Xizmatlar katalogi', 'Adliya, Ta\'lim, Soliq, Transport, Ijtimoiy himoya xizmatlari', 'services');
+      } else if (tab === 'tolovlar') {
+        openDocumentModal('To\'lovlar', 'Kommunal to\'lovlar, Davlat bojlari, Jarimalar to\'lovi', 'payments');
+      }
+    }
+
+    // Share Document
+    function shareDocument() {
+      if (navigator.share) {
+        navigator.share({
+          title: 'Abdulxakimov Muhammadrizo - ID Karta',
+          text: 'my.gov.uz elektron ID-karta hujjati',
+          url: window.location.href,
+        }).catch(() => {});
+      } else {
+        navigator.clipboard.writeText(window.location.href);
+        showToast('Hujjat havolasi nusxalandi');
+      }
+    }
+
+    // Dynamic Island interaction
+    function triggerDynamicIsland() {
+      showToast('my.gov.uz himoyalangan tizimiga ulangan');
+    }
+
+    // Desktop Device Frame Toggle
+    function toggleDeviceFrame() {
+      const wrapper = document.getElementById('device-wrapper');
+      isFrameVisible = !isFrameVisible;
+      if (isFrameVisible) {
+        wrapper.className = "relative w-full max-w-[420px] min-h-screen md:min-h-[880px] md:max-h-[900px] bg-[#0E1013] md:rounded-[50px] shadow-[0_25px_70px_rgba(0,0,0,0.85)] flex flex-col overflow-hidden md:border-[7px] md:border-[#22252B]";
+        showToast('iPhone ramkasi yoqildi');
+      } else {
+        wrapper.className = "relative w-full max-w-[480px] min-h-screen bg-[#0E1013] flex flex-col overflow-hidden";
+        showToast('To\'liq ekran rejimi');
+      }
+    }
+
+    // Toast helper
+    let toastTimeout = null;
+    function showToast(msg) {
+      const toast = document.getElementById('app-toast');
+      const text = document.getElementById('toast-text');
+      if (!toast || !text) return;
+      text.textContent = msg;
+      toast.classList.add('show');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 2500);
+    }
+
+    // Live Clock Update
+    function updateClock() {
+      const clockEl = document.getElementById('status-clock');
+      if (!clockEl) return;
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      clockEl.textContent = `${h}:${m}`;
+    }
+    updateClock();
+    setInterval(updateClock, 30000);
+  </script>
+</body>
+</html>
