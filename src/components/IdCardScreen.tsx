@@ -12,7 +12,6 @@ interface IdCardScreenProps {
 export const IdCardScreen: React.FC<IdCardScreenProps> = ({
   onNavigate,
   onOpenVerificationSheet,
-  onOpenPdfModal,
   onShowToast,
   onBack,
 }) => {
@@ -50,14 +49,18 @@ export const IdCardScreen: React.FC<IdCardScreenProps> = ({
   };
 
   return (
-    <div className="flex flex-col flex-1 overflow-y-auto pb-4">
+    <div className="flex flex-col flex-1 h-full overflow-hidden bg-[#161616]">
       {/* Top Navigation Bar */}
-      <nav className="px-5 pt-3 pb-2 flex items-center justify-between z-20 shrink-0" data-purpose="screen-navigation">
+      <nav
+        className="px-4 pb-2 flex items-center justify-between z-20 shrink-0"
+        style={{ paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)' }}
+        data-purpose="screen-navigation"
+      >
         {/* Back Button */}
         <button
           onClick={() => (onBack ? onBack() : onNavigate('docs'))}
-          aria-label="Go back"
-          className="w-10 h-10 rounded-full bg-[#24262b] text-neutral-200 flex items-center justify-center hover:bg-[#2e3137] active:scale-95 transition-all"
+          aria-label="Orqaga"
+          className="w-[46px] h-[46px] rounded-full bg-[#262626] border border-white/[0.08] text-white flex items-center justify-center active:scale-95 transition-all"
         >
           <svg className="w-5 h-5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path d="M15 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round"></path>
@@ -65,68 +68,73 @@ export const IdCardScreen: React.FC<IdCardScreenProps> = ({
         </button>
 
         {/* Screen Title */}
-        <h1 className="text-[17px] font-bold text-white tracking-tight">ID karta / pasport</h1>
+        <h1 className="text-[17px] font-semibold text-white">ID karta / pasport</h1>
 
-        {/* Action Buttons (Refresh & Share) */}
-        <div className="flex items-center space-x-2">
+        {/* Action Pill (Refresh | Share) */}
+        <div className="h-[46px] rounded-full bg-[#262626] border border-white/[0.08] flex items-center">
           <button
             onClick={handleRefresh}
-            aria-label="Refresh"
-            className="w-10 h-10 rounded-full bg-[#24262b] text-neutral-200 flex items-center justify-center hover:bg-[#2e3137] active:scale-95 transition-all"
+            aria-label="Yangilash"
+            className="w-[45px] h-full flex items-center justify-center text-white active:opacity-60"
           >
             <svg
-              className={`w-5 h-5 stroke-[2] transition-transform duration-700 ${isRefreshing ? 'rotate-[360deg]' : ''}`}
+              className={`w-[21px] h-[21px] stroke-[2.2] transition-transform duration-700 ${isRefreshing ? 'rotate-[360deg]' : ''}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round"></path>
+              <path d="M20 12a8 8 0 11-2.34-5.66M20 4v4.5h-4.5" strokeLinecap="round" strokeLinejoin="round"></path>
             </svg>
           </button>
+          <div className="w-px h-6 bg-white/[0.15]" />
           <button
             onClick={handleShare}
-            aria-label="Share"
-            className="w-10 h-10 rounded-full bg-[#24262b] text-neutral-200 flex items-center justify-center hover:bg-[#2e3137] active:scale-95 transition-all"
+            aria-label="Ulashish"
+            className="w-[45px] h-full flex items-center justify-center text-white active:opacity-60"
           >
-            <svg className="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" strokeLinecap="round" strokeLinejoin="round"></path>
+            <svg className="w-[21px] h-[21px] stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M12 3v12M8 7l4-4 4 4M8 10H6.5A1.5 1.5 0 005 11.5v8A1.5 1.5 0 006.5 21h11a1.5 1.5 0 001.5-1.5v-8a1.5 1.5 0 00-1.5-1.5H16" strokeLinecap="round" strokeLinejoin="round"></path>
             </svg>
           </button>
         </div>
       </nav>
 
       {/* Sync Info Pill */}
-      <div className="flex justify-center mt-1 mb-2 z-10 shrink-0" data-purpose="last-sync-indicator">
-        <div className="bg-[#24272e]/90 backdrop-blur border border-white/5 px-4 py-1.5 rounded-full flex items-center gap-1.5 shadow-inner">
-          <svg className="w-3.5 h-3.5 text-neutral-400 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="flex justify-center mt-2 z-10 shrink-0" data-purpose="last-sync-indicator">
+        <div className="h-[35px] bg-[#262626] border border-white/[0.1] px-4 rounded-full flex items-center gap-2">
+          <svg className="w-4 h-4 text-[#bdbdbd] stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <circle cx="12" cy="12" r="9"></circle>
             <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round"></path>
           </svg>
-          <p className="text-[11px] text-neutral-300 font-normal">
-            Oxirgi yangilanish: <span className="text-[#e29338] font-medium ml-0.5">{syncDate}</span>
+          <p className="text-[12.5px] text-[#d0d0d0] font-normal">
+            Oxirgi yangilanish sanasi: <span className="text-[#f0a030] font-semibold">{syncDate}</span>
           </p>
         </div>
       </div>
 
       {/* ID Card Center Showcase (3D Flippable Container) */}
-      <section className="flex-1 px-4 py-1 flex items-center justify-center relative overflow-hidden select-none perspective-1000">
+      <section className="flex-1 min-h-0 px-4 py-6 flex items-center justify-center relative select-none perspective-1000">
         <div
           onClick={handleFlip}
-          className="relative w-[320px] h-[510px] transform-style-3d transition-transform duration-700 cursor-pointer shadow-[0_20px_50px_rgba(0,0,0,0.7)] rounded-[22px]"
-          style={{ transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
+          className="relative transform-style-3d transition-transform duration-700 cursor-pointer rounded-[16px]"
+          style={{
+            height: 'min(535px, 100%)',
+            maxWidth: '78vw',
+            aspectRatio: '54 / 85.6',
+            transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+          }}
         >
           {/* FRONT SIDE (Rotated portrait layout matching real screenshot) */}
-          <div className="absolute inset-0 backface-hidden rounded-[22px] overflow-hidden border border-white/20 bg-neutral-900">
+          <div className="absolute inset-0 backface-hidden rounded-[16px] overflow-hidden bg-white">
             <img
               src="/assets/id_card_rotated.png"
               alt="ID Karta Abdulxakimov Muhammadrizo"
               className="w-full h-full object-cover select-none"
             />
-            <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none"></div>
           </div>
 
           {/* BACK SIDE (Realistic e-ID with chip, PINFL, residence and MRZ) */}
-          <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-[22px] overflow-hidden border border-sky-400/30 id-guilloche-bg p-4 flex flex-col justify-between text-neutral-800 shadow-2xl">
+          <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-[16px] overflow-hidden border border-sky-400/30 id-guilloche-bg p-4 flex flex-col justify-between text-neutral-800 shadow-2xl">
             {/* Header: Republic & Smart Chip */}
             <div className="flex justify-between items-start border-b border-sky-200 pb-2">
               <div>
@@ -174,62 +182,36 @@ export const IdCardScreen: React.FC<IdCardScreenProps> = ({
       </section>
 
       {/* Bottom Action Area */}
-      <footer className="px-5 pt-1 pb-4 flex flex-col gap-2.5 z-20 shrink-0" data-purpose="card-actions">
-        <div className="flex items-center space-x-3 w-full">
-          {/* Flip Button */}
-          <button
-            onClick={handleFlip}
-            aria-label="Aylantirish / Flip card"
-            className="w-12 h-12 rounded-2xl bg-[#24262b] text-neutral-300 flex items-center justify-center hover:bg-[#2d3036] active:scale-95 transition-all shadow-md shrink-0"
-          >
-            <svg className="w-5 h-5 stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" strokeLinecap="round" strokeLinejoin="round"></path>
-            </svg>
-          </button>
-
-          {/* "Ko'rsatish" Button */}
-          <button
-            onClick={onOpenVerificationSheet}
-            aria-label="Ko'rsatish"
-            className="flex-1 h-12 bg-[#92bcf4] hover:bg-[#a1c6fa] text-[#0d1c33] font-semibold text-[15px] rounded-2xl flex items-center justify-center space-x-2 active:scale-[0.98] transition-all shadow-lg shadow-sky-950/20"
-          >
-            <svg className="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" strokeLinecap="round" strokeLinejoin="round"></path>
-            </svg>
-            <span className="tracking-tight">Ko'rsatish</span>
-          </button>
-
-          {/* PDF Icon Button */}
-          <button
-            onClick={onOpenPdfModal}
-            aria-label="PDF shaklida yuklab olish"
-            className="w-12 h-12 rounded-2xl bg-[#24262b] text-neutral-300 hover:text-white flex items-center justify-center hover:bg-[#2d3036] active:scale-95 transition-all shadow-md shrink-0 relative group"
-          >
-            <svg className="w-5 h-5 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" strokeLinecap="round" strokeLinejoin="round"></path>
-            </svg>
-            <span className="absolute -top-1 -right-1 bg-amber-400 text-neutral-900 text-[8px] font-black px-1 py-0.5 rounded leading-none">PDF</span>
-          </button>
-        </div>
-
-        {/* PDF Banner Button */}
+      <footer
+        className="px-4 pt-2 flex items-center gap-[10px] z-20 shrink-0"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+        data-purpose="card-actions"
+      >
+        {/* Flip Button */}
         <button
-          onClick={onOpenPdfModal}
-          className="w-full py-2.5 px-3 bg-[#1e2025] hover:bg-[#25282f] active:scale-[0.99] border border-white/5 rounded-2xl flex items-center justify-between text-neutral-300 text-xs transition-all"
+          onClick={handleFlip}
+          aria-label="Aylantirish"
+          className="w-[46px] h-[46px] rounded-[13px] bg-[#262626] border border-white/[0.08] text-white flex items-center justify-center active:scale-95 transition-all shrink-0"
         >
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-[#ce1126]/20 text-[#ce1126] flex items-center justify-center font-bold text-[10px]">PDF</div>
-            <div className="flex flex-col text-left">
-              <span className="text-[12px] font-semibold text-neutral-200 leading-tight">PDF shaklida yuklab olish</span>
-              <span className="text-[9.5px] text-neutral-400 leading-none mt-0.5">QR kodli rasmiy nusxa • Yuridik kuchga ega</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 text-[11px] font-medium text-[#92bcf4]">
-            <span>Yuklab olish</span>
-            <svg className="w-3.5 h-3.5 stroke-[2.2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M7 10l5 5 5-5m-5-7v12" strokeLinecap="round" strokeLinejoin="round"></path>
-            </svg>
-          </div>
+          <svg className="w-[22px] h-[22px] stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path d="M7 14.5C4.6 13.9 3 12.8 3 11.5 3 9.6 7 8 12 8s9 1.6 9 3.5c0 1.6-2.7 2.9-6.5 3.4M10 12.5l3 2.5-3 2.5" strokeLinecap="round" strokeLinejoin="round"></path>
+          </svg>
+        </button>
+
+        {/* "Ko'rsatish" Button */}
+        <button
+          onClick={onOpenVerificationSheet}
+          aria-label="Ko'rsatish"
+          className="flex-1 h-[50px] bg-[#a6c8f6] text-[#1b2a3d] font-semibold text-[16px] rounded-[16px] flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
+        >
+          <svg className="w-[26px] h-[26px] stroke-[1.8]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path d="M3 7V5a2 2 0 012-2h2M17 3h2a2 2 0 012 2v2M21 17v2a2 2 0 01-2 2h-2M7 21H5a2 2 0 01-2-2v-2" strokeLinecap="round" strokeLinejoin="round"></path>
+            <rect x="7" y="7" width="4" height="4" rx="1"></rect>
+            <rect x="13" y="7" width="4" height="4" rx="1"></rect>
+            <rect x="7" y="13" width="4" height="4" rx="1"></rect>
+            <rect x="13" y="13" width="4" height="4" rx="1"></rect>
+          </svg>
+          <span>Ko‘rsatish</span>
         </button>
       </footer>
     </div>
