@@ -187,19 +187,20 @@ export const LockFlow: React.FC<LockFlowProps> = ({ onUnlock }) => {
           <h1 className="text-white text-[15px] font-semibold tracking-[0.2px]">PIN-kodni kiriting</h1>
 
           {/* 4 PIN circles */}
-          <div className={`flex gap-[7px] mt-[22px] ${pinError ? 'pin-shake' : ''}`}>
+          {/* The circle with the caret grows (52 -> 74px) and pushes its neighbours, like the app */}
+          <div className={`h-[74px] flex items-center gap-[7px] mt-[12px] ${pinError ? 'pin-shake' : ''}`}>
             {Array.from({ length: PIN_LENGTH }).map((_, i) => {
               const filled = i < pin.length;
               const isCaret = i === pin.length && !pinError;
               return (
                 <div
                   key={i}
-                  className={`w-[52px] h-[52px] rounded-full flex items-center justify-center transition-colors duration-150 ${
-                    pinError ? 'bg-[#4a2323]' : 'bg-[#2c2c2c]'
-                  }`}
+                  className={`rounded-full flex items-center justify-center shrink-0 transition-all duration-200 ease-out ${
+                    isCaret ? 'w-[74px] h-[74px]' : 'w-[52px] h-[52px]'
+                  } ${pinError ? 'bg-[#4a2323]' : 'bg-[#2c2c2c]'}`}
                 >
-                  {filled && <div className={`w-3 h-3 rounded-full ${pinError ? 'bg-[#ff6b6b]' : 'bg-white'}`} />}
-                  {isCaret && <div className="w-[1.5px] h-[18px] bg-white/70 pin-caret" />}
+                  {filled && <div className={`w-[6px] h-[6px] rounded-full pin-dot-in ${pinError ? 'bg-[#ff6b6b]' : 'bg-white'}`} />}
+                  {isCaret && <div className="w-[2px] h-[22px] rounded-full bg-white/80 pin-caret" />}
                 </div>
               );
             })}
