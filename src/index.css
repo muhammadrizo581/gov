@@ -171,3 +171,14 @@ h1, h2, h3, h4, h5, h6 {
 .pin-dot-in {
   animation: pin-dot-pop 0.15s ease-out;
 }
+
+/* Home skeleton placeholders shown right after unlock */
+@keyframes skeleton-shimmer-move {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+.skeleton-shimmer {
+  background: linear-gradient(90deg, #2e2e2e 0%, #8a8a8a 50%, #2e2e2e 100%);
+  background-size: 200% 100%;
+  animation: skeleton-shimmer-move 1s linear infinite;
+}

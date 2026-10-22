@@ -11,15 +11,15 @@ const PIN_LENGTH = 4;
 const BRAND_TEXT = 'my.gov.uz';
 
 // Splash timeline (ms), measured from the native app screen recording
-const LOGO_DELAY = 250;
-const TYPING_START = 1000;
-const TYPING_STEP = 55;
+const LOGO_DELAY = 300;
+const TYPING_START = 650;
+const TYPING_STEP = 45;
 const STATUS_TIMELINE: { at: number; text: string; done?: boolean }[] = [
-  { at: 2200, text: "Ma'lumotlarni yuklash" },
-  { at: 2700, text: 'Yana biroz kuting' },
-  { at: 3900, text: 'Barchasi tayyor', done: true },
+  { at: 2000, text: "Ma'lumotlarni yuklash" },
+  { at: 2350, text: 'Yana biroz kuting' },
+  { at: 3300, text: 'Barchasi tayyor', done: true },
 ];
-const SPLASH_END = 4700;
+const SPLASH_END = 3900;
 
 // ================= ICONS =================
 const BrandLogo = () => (
@@ -121,7 +121,7 @@ export const LockFlow: React.FC<LockFlowProps> = ({ onUnlock }) => {
             <BrandLogo />
           </div>
           <div
-            className="h-[34px] mt-1.5 text-white text-[25px] tracking-[0.2px]"
+            className="h-[32px] mt-1.5 text-white text-[23px] tracking-[0.2px]"
             style={{ fontFamily: "Georgia, 'Times New Roman', serif", fontWeight: 700 }}
           >
             {BRAND_TEXT.slice(0, typedChars)}
@@ -133,7 +133,7 @@ export const LockFlow: React.FC<LockFlowProps> = ({ onUnlock }) => {
           className="w-full flex flex-col items-center transition-transform duration-500 ease-out"
           style={{
             paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 18px)',
-            transform: logoShown ? 'translateY(0)' : 'translateY(120%)',
+            transform: logoShown ? 'translateY(0)' : 'translateY(8px)',
           }}
         >
           <div className="h-5 mb-2.5 flex items-center gap-1.5 text-white/90 text-[13px] font-normal">

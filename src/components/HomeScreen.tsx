@@ -8,6 +8,7 @@ interface HomeScreenProps {
   onShowToast: (msg: string) => void;
   onOpenQrScanner?: () => void;
   onOpenNavTab?: (tab: string) => void;
+  isLoading?: boolean;
 }
 
 interface WidgetItem {
@@ -32,10 +33,19 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onShowToast,
   onOpenQrScanner = () => {},
   onOpenNavTab = () => {},
+  isLoading = false,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showLoginNotification, setShowLoginNotification] = useState(true);
+  // After unlock the app shows skeletons first, then the login card slides in a bit later
+  const [noticeReady, setNoticeReady] = useState(!isLoading);
+
+  useEffect(() => {
+    if (isLoading) return;
+    const timer = setTimeout(() => setNoticeReady(true), 450);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
 
   // Stories
   const stories = [
@@ -379,7 +389,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                 <svg className="w-[20px] h-[20px] fill-current" viewBox="0 0 24 24">
                   <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
                 </svg>
-                {showLoginNotification && (
+                {showLoginNotification && noticeReady && (
                   <span className="absolute top-[1px] right-[1px] w-2 h-2 rounded-full bg-[#ef4444]" />
                 )}
               </button>
@@ -427,7 +437,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   <svg 
                     className={`w-[18px] h-[18px] stroke-white fill-none stroke-[2.4] transition-transform duration-500 ${
                       isRefreshing ? 'rotate-[360deg]' : ''
-                    }`} 
+                    } ${isLoading ? 'animate-spin' : ''}`} 
                     viewBox="0 0 24 24"
                   >
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0 4.142-3.358 7.5-7.5 7.5S4.5 16.142 4.5 12 7.858 4.5 12 4.5c2.43 0 4.593 1.156 5.969 2.946M19.5 4.5v3.5h-3.5" />
@@ -448,9 +458,17 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
 
             {/* Carousel: 3 Pages (5 widgets) with seamless 3s autoplay & loop */}
             <div className="relative w-full overflow-hidden">
+              {/* Skeleton placeholders while the app is "loading" after unlock */}
+              {isLoading && (
+                <div className="absolute inset-0 z-10 flex gap-2.5 px-0.5">
+                  <div className="flex-1 h-[92px] rounded-[20px] skeleton-shimmer" />
+                  <div className="flex-1 h-[92px] rounded-[20px] skeleton-shimmer" />
+                </div>
+              )}
               <div 
                 className="flex"
                 style={{
+                  opacity: isLoading ? 0 : 1,
                   transform: `translateX(-${currentIndex * 100}%)`,
                   transition: isTransitioning ? 'transform 400ms cubic-bezier(0.25, 1, 0.5, 1)' : 'none',
                   willChange: 'transform',
@@ -500,7 +518,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
             </div>
 
             {/* 3 Pagination Dots: active is 20x6px pill, inactive 6px circle */}
-            <div className="flex items-center justify-center space-x-1.5 mt-2.5">
+            <div className={`flex items-center justify-center space-x-1.5 mt-2.5 ${isLoading ? 'invisible' : ''}`}>
               {[0, 1, 2].map((dotIdx) => {
                 const isActive = activeDotIndex === dotIdx;
                 return (
@@ -599,7 +617,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
                   className="flex items-center p-1 rounded-xl active:bg-white/[0.04] transition cursor-pointer"
                 >
                   {/* 42px squircle icon box, radius 10, fon #a9c4f5 */}
-                  <div className="w-[42px] h-[42px] rounded-[10px] bg-[#a9c4f5] flex items-center justify-center text-[#12161f] shrink-0 shadow-sm">
+                  <div className={`w-[42px] h-[42px] rounded-[10px] bg-[#a9c4f5] flex items-center justify-center text-[#12161f] shrink-0 shadow-sm ${isLoading ? '[&>*]:opacity-0' : ''}`}>
                     {service.iconType === 'document' && (
                       <svg className="w-5 h-5 stroke-current fill-none stroke-[2]" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m5.25 11.25h3m-3-3h3m-7.5-3h7.5M8.25 21h8.25M6 4.5h7.5a2.25 2.25 0 012.25 2.25v1.5a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 8.25v-1.5A2.25 2.25 0 016 4.5z" />

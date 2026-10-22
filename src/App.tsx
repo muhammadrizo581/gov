@@ -52,6 +52,7 @@ export default function App() {
   // Splash + PIN / Face ID on every launch
   const [isLocked, setIsLocked] = useState(!resumeStack);
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
+  const [isHomeLoading, setIsHomeLoading] = useState(false);
   const [isPrivacyOn, setIsPrivacyOn] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -385,6 +386,7 @@ export default function App() {
             onShowToast={showToast}
             onOpenQrScanner={() => setIsScannerOpen(true)}
             onOpenNavTab={handleOpenNavTab}
+            isLoading={isHomeLoading}
           />
         );
       case 'profile':
@@ -605,7 +607,15 @@ export default function App() {
       <Toast message={toastMessage} />
 
       {/* Launch splash + PIN / Face ID lock (Top Layer z-[3000]) */}
-      {isLocked && <LockFlow onUnlock={() => setIsLocked(false)} />}
+      {isLocked && (
+        <LockFlow
+          onUnlock={() => {
+            setIsLocked(false);
+            setIsHomeLoading(true);
+            setTimeout(() => setIsHomeLoading(false), 700);
+          }}
+        />
+      )}
     </div>
   );
 }
