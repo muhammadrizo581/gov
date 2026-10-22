@@ -18,9 +18,6 @@ export default function App() {
   const [screenStack, setScreenStack] = useState<Screen[]>(['home']);
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>('idle');
   const [animProgress, setAnimProgress] = useState<number>(0);
-  const [dragOffset, setDragOffset] = useState<number>(0);
-  const [completingDrag, setCompletingDrag] = useState<boolean>(false);
-  const [snappingDrag, setSnappingDrag] = useState<boolean>(false);
 
   // When popping, we keep track of the outgoing screen so it can animate out
   const [outgoingScreen, setOutgoingScreen] = useState<Screen | null>(null);
@@ -39,9 +36,16 @@ export default function App() {
 
   const touchState = useRef({
     startX: 0,
+    startY: 0,
     startTime: 0,
+    offset: 0,
+    axis: 'none' as 'none' | 'x' | 'y',
     isEdgeSwipe: false,
   });
+
+  // Drag layers are moved straight through the DOM (no re-render per touchmove)
+  const dragLayerRef = useRef<HTMLDivElement>(null);
+  const underLayerRef = useRef<HTMLDivElement>(null);
 
   const isPoppingProgrammatically = useRef(false);
 
@@ -60,7 +64,9 @@ export default function App() {
   const handlePush = (nextScreen: Screen) => {
     if (transitionPhase !== 'idle') return;
 
-    window.history.pushState({ screen: nextScreen, depth: screenStack.length + 1 }, '', `#${nextScreen}`);
+    // replaceState, not pushState: extra history entries make iOS draw its own
+    // back-swipe snapshot on top of our animation (duplicated pages)
+    window.history.replaceState({ screen: nextScreen }, '', `#${nextScreen}`);
     setScreenStack((prev) => [...prev, nextScreen]);
     setTransitionPhase('pushing');
     setAnimProgress(0);
@@ -88,8 +94,7 @@ export default function App() {
     setAnimProgress(0);
 
     if (!fromBrowserBack) {
-      isPoppingProgrammatically.current = true;
-      window.history.back();
+      window.history.replaceState({ screen: screenStack[screenStack.length - 2] }, '', `#${screenStack[screenStack.length - 2]}`);
     }
 
     requestAnimationFrame(() => {
@@ -150,56 +155,77 @@ export default function App() {
   const isStandalone = typeof window !== 'undefined' && 
     (Boolean((window.navigator as any).standalone) || window.matchMedia('(display-mode: standalone)').matches);
 
+  const applyDrag = (offset: number, animate: boolean) => {
+    const progress = Math.min(1, Math.max(0, offset / window.innerWidth));
+    const transition = animate
+      ? 'transform 200ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 200ms cubic-bezier(0.2, 0.8, 0.2, 1)'
+      : 'none';
+    if (dragLayerRef.current) {
+      dragLayerRef.current.style.transition = transition;
+      dragLayerRef.current.style.transform = `translateX(${offset}px)`;
+    }
+    if (underLayerRef.current) {
+      underLayerRef.current.style.transition = transition;
+      underLayerRef.current.style.transform = `translateX(${-30 + progress * 30}%)`;
+      underLayerRef.current.style.filter = `brightness(${0.9 + 0.1 * progress})`;
+    }
+  };
+
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!isStandalone || screenStack.length <= 1 || transitionPhase !== 'idle') return;
     const touch = e.touches[0];
-    if (touch.clientX <= 22) {
-      touchState.current = {
-        startX: touch.clientX,
-        startTime: Date.now(),
-        isEdgeSwipe: true,
-      };
-      setTransitionPhase('dragging');
-      setDragOffset(0);
-    } else {
-      touchState.current.isEdgeSwipe = false;
-    }
+    touchState.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      startTime: Date.now(),
+      offset: 0,
+      axis: 'none',
+      isEdgeSwipe: touch.clientX <= 24,
+    };
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (!touchState.current.isEdgeSwipe || transitionPhase !== 'dragging') return;
+    const state = touchState.current;
+    if (!state.isEdgeSwipe) return;
     const touch = e.touches[0];
-    const deltaX = Math.max(0, touch.clientX - touchState.current.startX);
-    setDragOffset(deltaX);
+    const deltaX = touch.clientX - state.startX;
+    const deltaY = touch.clientY - state.startY;
+
+    // Decide once whether this is a horizontal back-swipe or a vertical scroll
+    if (state.axis === 'none') {
+      if (Math.abs(deltaX) < 6 && Math.abs(deltaY) < 6) return;
+      state.axis = Math.abs(deltaX) > Math.abs(deltaY) ? 'x' : 'y';
+      if (state.axis === 'y') {
+        state.isEdgeSwipe = false;
+        return;
+      }
+      setTransitionPhase('dragging');
+    }
+
+    state.offset = Math.max(0, deltaX);
+    applyDrag(state.offset, false);
   };
 
   const handleTouchEnd = () => {
-    if (!touchState.current.isEdgeSwipe || transitionPhase !== 'dragging') return;
-    touchState.current.isEdgeSwipe = false;
+    const state = touchState.current;
+    if (!state.isEdgeSwipe) return;
+    state.isEdgeSwipe = false;
+    if (state.axis !== 'x') return;
 
-    const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 430;
-    const elapsed = Date.now() - touchState.current.startTime;
-    const velocity = elapsed > 0 ? dragOffset / elapsed : 0;
-    const shouldPop = dragOffset > screenWidth * 0.35 || (velocity > 0.45 && dragOffset > 40);
+    const screenWidth = window.innerWidth;
+    const elapsed = Date.now() - state.startTime;
+    const velocity = elapsed > 0 ? state.offset / elapsed : 0;
+    const shouldPop = state.offset > screenWidth * 0.35 || (velocity > 0.45 && state.offset > 40);
 
-    if (shouldPop) {
-      setCompletingDrag(true);
-      setTimeout(() => {
-        isPoppingProgrammatically.current = true;
-        window.history.back();
-        setScreenStack((prev) => prev.slice(0, -1));
-        setTransitionPhase('idle');
-        setDragOffset(0);
-        setCompletingDrag(false);
-      }, 200);
-    } else {
-      setSnappingDrag(true);
-      setTimeout(() => {
-        setTransitionPhase('idle');
-        setDragOffset(0);
-        setSnappingDrag(false);
-      }, 200);
-    }
+    applyDrag(shouldPop ? screenWidth : 0, true);
+    setTimeout(() => {
+      if (shouldPop) {
+        const nextStack = screenStack.slice(0, -1);
+        window.history.replaceState({ screen: nextStack[nextStack.length - 1] }, '', `#${nextStack[nextStack.length - 1]}`);
+        setScreenStack(nextStack);
+      }
+      setTransitionPhase('idle');
+    }, 200);
   };
 
   const handleTogglePrivacy = () => {
@@ -292,6 +318,7 @@ export default function App() {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
       {/* Solid Opaque Status Bar for Profile & Docs (NOT rendered on Home Screen) */}
       {currentScreen !== 'home' && (
@@ -362,20 +389,9 @@ export default function App() {
 
         {transitionPhase === 'dragging' && previousScreen && (
           <div
-            className={`page-container ${completingDrag || snappingDrag ? 'page-transition-anim' : ''}`}
-            style={{
-              zIndex: 10,
-              transform: completingDrag
-                ? 'translateX(0%)'
-                : snappingDrag
-                ? 'translateX(-30%)'
-                : `translateX(${-30 + Math.min(1, dragOffset / screenWidth) * 30}%)`,
-              filter: completingDrag
-                ? 'brightness(1)'
-                : snappingDrag
-                ? 'brightness(0.9)'
-                : `brightness(${0.9 + 0.1 * Math.min(1, dragOffset / screenWidth)})`,
-            }}
+            ref={underLayerRef}
+            className="page-container"
+            style={{ zIndex: 10, transform: 'translateX(-30%)', filter: 'brightness(0.9)' }}
           >
             {renderScreenComponent(previousScreen)}
           </div>
@@ -404,15 +420,9 @@ export default function App() {
           </div>
         ) : transitionPhase === 'dragging' ? (
           <div
-            className={`page-container page-shadow-edge ${completingDrag || snappingDrag ? 'page-transition-anim' : ''}`}
-            style={{
-              zIndex: 20,
-              transform: completingDrag
-                ? `translateX(${screenWidth}px)`
-                : snappingDrag
-                ? 'translateX(0px)'
-                : `translateX(${dragOffset}px)`,
-            }}
+            ref={dragLayerRef}
+            className="page-container page-shadow-edge"
+            style={{ zIndex: 20, transform: 'translateX(0px)' }}
           >
             {renderScreenComponent(currentScreen)}
           </div>
