@@ -6,8 +6,6 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 3000,
-    host: true,
-    // HTTPS tunnel for Face ID (WebAuthn needs a real HTTPS domain)
-    allowedHosts: ['.trycloudflare.com']
+    host: true
   }
 })

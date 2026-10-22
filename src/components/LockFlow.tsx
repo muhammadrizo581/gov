@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface LockFlowProps {
   onUnlock: () => void;
@@ -9,7 +9,6 @@ type LockStage = 'splash' | 'to-pin' | 'pin' | 'unlocking';
 const CORRECT_PIN = '0000';
 const PIN_LENGTH = 4;
 const BRAND_TEXT = 'my.gov.uz';
-const FACE_ID_CRED_KEY = 'mygov_faceid_credential';
 
 // Splash timeline (ms), measured from the native app screen recording
 const LOGO_DELAY = 250;
@@ -22,63 +21,6 @@ const STATUS_TIMELINE: { at: number; text: string; done?: boolean }[] = [
 ];
 const SPLASH_END = 4700;
 
-// ================= FACE ID (WebAuthn platform authenticator) =================
-// Works only over HTTPS on a real domain (not on http://172.20.10.2).
-const toBase64 = (buf: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(buf)));
-const fromBase64 = (str: string) => Uint8Array.from(atob(str), (c) => c.charCodeAt(0));
-const randomBytes = (n: number) => crypto.getRandomValues(new Uint8Array(n));
-
-// Real Face ID needs HTTPS on a domain; on plain http (local IP) we only
-// play the Face ID animation without any biometric check.
-const canUseRealFaceId = () => window.isSecureContext && Boolean(window.PublicKeyCredential);
-
-const getStoredCredential = () => {
-  try {
-    return localStorage.getItem(FACE_ID_CRED_KEY);
-  } catch {
-    return null;
-  }
-};
-
-const registerFaceId = async () => {
-  const credential = (await navigator.credentials.create({
-    publicKey: {
-      challenge: randomBytes(32),
-      rp: { name: 'my.gov.uz' },
-      user: { id: randomBytes(16), name: 'muhammadrizo', displayName: 'A. Muhammadrizo' },
-      pubKeyCredParams: [
-        { type: 'public-key', alg: -7 },
-        { type: 'public-key', alg: -257 },
-      ],
-      authenticatorSelection: {
-        authenticatorAttachment: 'platform',
-        userVerification: 'required',
-        residentKey: 'preferred',
-      },
-      timeout: 60000,
-    },
-  })) as PublicKeyCredential | null;
-  if (!credential) return false;
-  try {
-    localStorage.setItem(FACE_ID_CRED_KEY, toBase64(credential.rawId));
-  } catch {
-    // Storage blocked: Face ID still worked for this launch
-  }
-  return true;
-};
-
-const verifyFaceId = async (credentialId: string) => {
-  const assertion = await navigator.credentials.get({
-    publicKey: {
-      challenge: randomBytes(32),
-      allowCredentials: [{ type: 'public-key', id: fromBase64(credentialId) }],
-      userVerification: 'required',
-      timeout: 60000,
-    },
-  });
-  return Boolean(assertion);
-};
-
 // ================= ICONS =================
 const BrandLogo = () => (
   <svg className="w-[46px] h-[46px]" viewBox="0 0 48 48" fill="none">
@@ -86,13 +28,6 @@ const BrandLogo = () => (
     <rect x="9.5" y="9.5" width="26" height="26" rx="5" fill="#0256d6" stroke="white" strokeWidth="2.6" />
     <rect x="16" y="16" width="29" height="29" rx="5.5" fill="white" />
     <path d="M23 30.5l5 5 10-11" stroke="#0256d6" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-);
-
-const FaceIdIcon = () => (
-  <svg className="w-[30px] h-[30px]" viewBox="0 0 24 24" fill="none" stroke="#9ec6f8" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M3 8V5.5A2.5 2.5 0 015.5 3H8M16 3h2.5A2.5 2.5 0 0121 5.5V8M21 16v2.5a2.5 2.5 0 01-2.5 2.5H16M8 21H5.5A2.5 2.5 0 013 18.5V16" />
-    <path d="M8.5 9v1.5M15.5 9v1.5M12 9v4h-1M9 16c1.7 1.3 4.3 1.3 6 0" />
   </svg>
 );
 
@@ -118,10 +53,6 @@ export const LockFlow: React.FC<LockFlowProps> = ({ onUnlock }) => {
   const [statusIndex, setStatusIndex] = useState(-1);
   const [pin, setPin] = useState('');
   const [pinError, setPinError] = useState(false);
-  const [faceIdActive, setFaceIdActive] = useState(false);
-  const [faceIdPhase, setFaceIdPhase] = useState<'idle' | 'scanning' | 'success'>('idle');
-  const [hint, setHint] = useState('');
-  const autoFaceIdTried = useRef(false);
 
   // Splash timeline
   useEffect(() => {
@@ -141,47 +72,10 @@ export const LockFlow: React.FC<LockFlowProps> = ({ onUnlock }) => {
     setTimeout(onUnlock, 300);
   };
 
-  const playFaceIdAnimation = () => {
-    setFaceIdPhase('scanning');
-    setTimeout(() => setFaceIdPhase('success'), 1300);
-    setTimeout(unlock, 1900);
-  };
-
-  const handleFaceId = async () => {
-    if (faceIdActive || faceIdPhase !== 'idle') return;
-    setHint('');
-    if (!canUseRealFaceId()) {
-      playFaceIdAnimation();
-      return;
-    }
-    setFaceIdActive(true);
-    try {
-      const stored = getStoredCredential();
-      const ok = stored ? await verifyFaceId(stored) : await registerFaceId();
-      if (ok) unlock();
-    } catch (e) {
-      const name = e instanceof Error ? e.name : 'Error';
-      setHint(name === 'NotAllowedError' ? 'Face ID bekor qilindi' : `Face ID xatosi: ${name}`);
-    } finally {
-      setFaceIdActive(false);
-    }
-  };
-
-  // Start Face ID automatically when the PIN screen appears, like the native app.
-  // Real WebAuthn without a tap only works once a passkey is saved.
-  useEffect(() => {
-    if (stage !== 'pin' || autoFaceIdTried.current) return;
-    autoFaceIdTried.current = true;
-    if (!canUseRealFaceId() || getStoredCredential()) {
-      setTimeout(handleFaceId, 250);
-    }
-  }, [stage]);
-
   const handleDigit = (digit: string) => {
     if (pin.length >= PIN_LENGTH || stage === 'unlocking') return;
     const next = pin + digit;
     setPinError(false);
-    setHint('');
     setPin(next);
     if (next.length === PIN_LENGTH) {
       if (next === CORRECT_PIN) {
@@ -213,7 +107,6 @@ export const LockFlow: React.FC<LockFlowProps> = ({ onUnlock }) => {
         style={{
           transform: pinOnScreen ? 'translateX(-30%)' : 'translateX(0%)',
           filter: pinOnScreen ? 'brightness(0.9)' : 'brightness(1)',
-          visibility: faceIdPhase !== 'idle' ? 'hidden' : 'visible',
         }}
       >
         <div className="flex-1 flex flex-col items-center justify-center -mt-[8%]">
@@ -287,7 +180,6 @@ export const LockFlow: React.FC<LockFlowProps> = ({ onUnlock }) => {
           className="absolute inset-0 bg-[#1b1b1b] flex flex-col items-center page-transition-anim page-shadow-edge"
           style={{
             transform: pinOnScreen ? 'translateX(0%)' : 'translateX(100%)',
-            filter: faceIdPhase !== 'idle' ? 'blur(14px)' : 'none',
             paddingTop: 'calc(env(safe-area-inset-top, 0px) + 46px)',
             paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 22px)',
           }}
@@ -313,8 +205,8 @@ export const LockFlow: React.FC<LockFlowProps> = ({ onUnlock }) => {
             })}
           </div>
 
-          <div className={`h-6 mt-3 text-[13px] font-normal ${pinError ? 'text-[#ff6b6b]' : 'text-[#9a9a9a]'}`}>
-            {pinError ? "PIN-kod noto'g'ri" : hint}
+          <div className="h-6 mt-3 text-[13px] font-normal text-[#ff6b6b]">
+            {pinError ? "PIN-kod noto'g'ri" : ''}
           </div>
 
           {/* Keypad */}
@@ -330,16 +222,8 @@ export const LockFlow: React.FC<LockFlowProps> = ({ onUnlock }) => {
                   {d}
                 </button>
               ))}
-              <button
-                type="button"
-                onClick={handleFaceId}
-                aria-label="Face ID"
-                className={`h-[72px] rounded-[18px] flex items-center justify-center transition-colors active:bg-[#9ec6f8]/[0.15] ${
-                  faceIdActive ? 'bg-[#9ec6f8]/[0.15]' : ''
-                }`}
-              >
-                <FaceIdIcon />
-              </button>
+              {/* Face ID is disabled: PIN only */}
+              <div />
               <button
                 type="button"
                 onClick={() => handleDigit('0')}
@@ -364,25 +248,6 @@ export const LockFlow: React.FC<LockFlowProps> = ({ onUnlock }) => {
         </div>
       )}
 
-      {/* ================= FACE ID GLYPH (iOS style, top center) ================= */}
-      {faceIdPhase !== 'idle' && (
-        <div
-          className="absolute left-1/2 -translate-x-1/2 w-[76px] h-[76px] rounded-[22px] bg-black flex items-center justify-center faceid-pop"
-          style={{ top: 'calc(env(safe-area-inset-top, 0px) - 46px)', marginTop: 52 }}
-        >
-          {faceIdPhase === 'scanning' ? (
-            <div className="relative w-[46px] h-[46px] faceid-scan">
-              <div className="absolute inset-0 rounded-full border-[3px] border-[#4cd964] shadow-[0_0_12px_#4cd964]" />
-              <div className="absolute inset-[6px] rounded-full border-[2px] border-[#4cd964]/60 faceid-scan-inner" />
-            </div>
-          ) : (
-            <svg className="w-[46px] h-[46px] faceid-pop" viewBox="0 0 48 48" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <circle cx="24" cy="24" r="21" />
-              <path d="M15 24.5l6 6 12-13" />
-            </svg>
-          )}
-        </div>
-      )}
     </div>
   );
 };
