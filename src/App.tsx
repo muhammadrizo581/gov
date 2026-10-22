@@ -14,8 +14,35 @@ import { LockFlow } from './components/LockFlow';
 
 type TransitionPhase = 'idle' | 'pushing' | 'popping' | 'dragging';
 
+// Pull-to-refresh reloads the app; this flag reopens the same page without the lock screen
+const RESUME_KEY = 'mygov_resume_stack';
+const PULL_THRESHOLD = 64;
+const PULL_MAX = 110;
+
+const resumeStack = (() => {
+  try {
+    const raw = sessionStorage.getItem(RESUME_KEY);
+    sessionStorage.removeItem(RESUME_KEY);
+    const stack = raw ? (JSON.parse(raw) as Screen[]) : null;
+    return Array.isArray(stack) && stack.length > 0 ? stack : null;
+  } catch {
+    return null;
+  }
+})();
+
+const findScroller = (el: HTMLElement | null): HTMLElement | null => {
+  while (el && !el.classList.contains('page-container')) {
+    const overflowY = getComputedStyle(el).overflowY;
+    // Skip horizontal scrollers (e.g. the stories row): overflow-x makes overflow-y compute to auto
+    const isHorizontal = el.scrollWidth > el.clientWidth + 1;
+    if ((overflowY === 'auto' || overflowY === 'scroll') && !isHorizontal) return el;
+    el = el.parentElement;
+  }
+  return null;
+};
+
 export default function App() {
-  const [screenStack, setScreenStack] = useState<Screen[]>(['home']);
+  const [screenStack, setScreenStack] = useState<Screen[]>(resumeStack ?? ['home']);
   const [transitionPhase, setTransitionPhase] = useState<TransitionPhase>('idle');
   const [animProgress, setAnimProgress] = useState<number>(0);
 
@@ -23,7 +50,8 @@ export default function App() {
   const [outgoingScreen, setOutgoingScreen] = useState<Screen | null>(null);
 
   // Splash + PIN / Face ID on every launch
-  const [isLocked, setIsLocked] = useState(true);
+  const [isLocked, setIsLocked] = useState(!resumeStack);
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
   const [isPrivacyOn, setIsPrivacyOn] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -134,7 +162,7 @@ export default function App() {
 
   // Setup history state & popstate listener
   useEffect(() => {
-    window.history.replaceState({ screen: 'home', depth: 1 }, '', '#home');
+    window.history.replaceState({ screen: currentScreen }, '', `#${currentScreen}`);
 
     const handlePopState = (e: PopStateEvent) => {
       if (isPoppingProgrammatically.current) {
@@ -154,6 +182,92 @@ export default function App() {
   // Standalone edge swipe-back gesture
   const isStandalone = typeof window !== 'undefined' && 
     (Boolean((window.navigator as any).standalone) || window.matchMedia('(display-mode: standalone)').matches);
+
+  // ================= PULL TO REFRESH =================
+  const pullState = useRef({
+    startX: 0,
+    startY: 0,
+    scroller: null as HTMLElement | null,
+    armed: false,
+    active: false,
+    distance: 0,
+  });
+  const pullIndicatorRef = useRef<HTMLDivElement>(null);
+
+  const applyPull = (distance: number, animate: boolean) => {
+    const transition = animate ? 'transform 250ms cubic-bezier(0.2, 0.8, 0.2, 1), opacity 250ms' : 'none';
+    const scroller = pullState.current.scroller;
+    if (scroller) {
+      scroller.style.transition = transition;
+      scroller.style.transform = distance > 0 ? `translateY(${distance}px)` : '';
+    }
+    if (pullIndicatorRef.current) {
+      const progress = Math.min(1, distance / PULL_THRESHOLD);
+      pullIndicatorRef.current.style.transition = transition;
+      pullIndicatorRef.current.style.opacity = String(progress);
+      pullIndicatorRef.current.style.transform = `translate(-50%, ${distance - 44}px) rotate(${distance * 4}deg)`;
+    }
+  };
+
+  const handlePullStart = (e: React.TouchEvent) => {
+    if (isLocked || isPullRefreshing || transitionPhase !== 'idle') return;
+    const touch = e.touches[0];
+    const scroller = findScroller(e.target as HTMLElement);
+    pullState.current = {
+      startX: touch.clientX,
+      startY: touch.clientY,
+      scroller,
+      armed: Boolean(scroller) && scroller!.scrollTop <= 0 && touch.clientX > 24,
+      active: false,
+      distance: 0,
+    };
+  };
+
+  const handlePullMove = (e: React.TouchEvent) => {
+    const state = pullState.current;
+    if (!state.armed) return;
+    const touch = e.touches[0];
+    const deltaX = touch.clientX - state.startX;
+    const deltaY = touch.clientY - state.startY;
+
+    if (!state.active) {
+      if (deltaY < 8 || Math.abs(deltaX) > deltaY) {
+        // Horizontal drag (carousel, swipe-back) or scrolling up: not a pull
+        if (Math.abs(deltaX) > 8 || deltaY < -4) state.armed = false;
+        return;
+      }
+      if (state.scroller && state.scroller.scrollTop > 0) {
+        state.armed = false;
+        return;
+      }
+      state.active = true;
+    }
+
+    state.distance = Math.min(PULL_MAX, (deltaY - 8) * 0.5);
+    applyPull(state.distance, false);
+  };
+
+  const handlePullEnd = () => {
+    const state = pullState.current;
+    state.armed = false;
+    if (!state.active) return;
+    state.active = false;
+
+    if (state.distance >= PULL_THRESHOLD) {
+      setIsPullRefreshing(true);
+      applyPull(56, true);
+      setTimeout(() => {
+        try {
+          sessionStorage.setItem(RESUME_KEY, JSON.stringify(screenStack));
+        } catch {
+          // Without storage the app reloads to the lock screen, which is still fine
+        }
+        window.location.reload();
+      }, 700);
+    } else {
+      applyPull(0, true);
+    }
+  };
 
   const applyDrag = (offset: number, animate: boolean) => {
     const progress = Math.min(1, Math.max(0, offset / window.innerWidth));
@@ -315,11 +429,35 @@ export default function App() {
     <div 
       style={{ height: 'var(--app-height, 100%)' }}
       className="fixed top-0 left-0 right-0 bg-[#161616] flex flex-col justify-start p-0 m-0 text-white selection:bg-teal-500 selection:text-white overflow-hidden select-none"
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
+      onTouchStart={(e) => {
+        handleTouchStart(e);
+        handlePullStart(e);
+      }}
+      onTouchMove={(e) => {
+        handleTouchMove(e);
+        handlePullMove(e);
+      }}
+      onTouchEnd={() => {
+        handleTouchEnd();
+        handlePullEnd();
+      }}
+      onTouchCancel={() => {
+        handleTouchEnd();
+        handlePullEnd();
+      }}
     >
+      {/* Pull-to-refresh spinner */}
+      <div
+        ref={pullIndicatorRef}
+        className="fixed left-1/2 z-[30] w-9 h-9 rounded-full bg-[#262626] border border-white/[0.1] shadow-lg flex items-center justify-center pointer-events-none"
+        style={{ top: 'calc(env(safe-area-inset-top, 0px) + 8px)', opacity: 0, transform: 'translate(-50%, -44px)' }}
+      >
+        <svg className={`w-5 h-5 ${isPullRefreshing ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="9" stroke="rgba(255,255,255,0.2)" strokeWidth="2.5" />
+          <path d="M21 12a9 9 0 00-9-9" stroke="#9ec6f8" strokeWidth="2.5" strokeLinecap="round" />
+        </svg>
+      </div>
+
       {/* Solid Opaque Status Bar for Profile & Docs (NOT rendered on Home Screen) */}
       {currentScreen !== 'home' && (
         <div 
